@@ -1,10 +1,18 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ProductCard } from "../components/ProductCard";
 import { CATEGORIES } from "../../constants/categories";
 import { ROUTES } from "../../constants/routes";
 import { Product } from "../../types";
+import { Crown, TrendingUp, Wallet, Sparkles, ArrowRight } from "lucide-react";
+import { formatPrice } from "../../utils/format";
 
 export function MainPage() {
+  const navigate = useNavigate();
+
+  const handleSetClick = (setId: 'premium' | 'value' | 'budget') => {
+    navigate(`${ROUTES.SIMULATOR}?set=${setId}`);
+  };
+
   const bestProducts: Product[] = [
     {
       id: "1",
@@ -147,16 +155,262 @@ export function MainPage() {
         </div>
       </section> */}
 
-      {/* Expert Recommended */}
+      {/* Equipment Sets */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl mb-8 text-center">
-            명장이 추천하는 상품
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {recommendedProducts.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold">명장 추천 세트</h2>
+            <Link
+              to={ROUTES.SIMULATOR}
+              className="text-primary hover:text-primary/80 flex items-center gap-2 font-semibold"
+            >
+              시뮬레이터 바로가기
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 명장세트 */}
+            <div
+              onClick={() => handleSetClick('premium')}
+              className="group relative bg-white border-2 border-amber-300 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 transition-all cursor-pointer"
+            >
+              {/* 배 이미지 영역 */}
+              <div className="relative bg-gradient-to-b from-blue-100 to-blue-200 h-48 overflow-hidden">
+                <svg
+                  viewBox="0 0 800 450"
+                  className="w-full h-full"
+                  style={{ background: 'linear-gradient(to bottom, #e0f2fe, #bae6fd)' }}
+                >
+                  {/* 바다 파도 */}
+                  <path
+                    d="M 0 400 Q 100 390 200 395 Q 300 400 400 395 Q 500 390 600 395 Q 700 400 800 395 L 800 450 L 0 450 Z"
+                    fill="#3b82f6"
+                    opacity="0.4"
+                  />
+                  {/* 배 본체 */}
+                  <path
+                    d="M 120 280 Q 180 240 250 240 L 550 240 Q 620 240 680 280 L 680 360 Q 620 400 550 400 L 250 400 Q 180 400 120 360 Z"
+                    fill="#ffffff"
+                    stroke="#1e40af"
+                    strokeWidth="4"
+                  />
+                  {/* 플라이브리지 */}
+                  <rect x="280" y="180" width="240" height="80" fill="#f0f9ff" stroke="#1e40af" strokeWidth="2" rx="8" />
+                  {/* 마스트 */}
+                  <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
+                  <circle cx="400" cy="60" r="18" fill="#1e40af" />
+                  <circle cx="400" cy="50" r="12" fill="#cbd5e1" stroke="#1e40af" strokeWidth="2" />
+                  {/* 적용된 장비 마커 */}
+                  <circle cx="360" cy="220" r="8" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
+                  <circle cx="400" cy="50" r="6" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
+                  <circle cx="160" cy="240" r="6" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
+                  <circle cx="600" cy="320" r="6" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
+                  <circle cx="480" cy="340" r="6" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
+                </svg>
+                <div className="absolute top-2 left-2 flex items-center gap-2 bg-amber-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  <Crown className="w-4 h-4" />
+                  명장세트
+                </div>
+              </div>
+              
+              {/* 정보 영역 */}
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-amber-900 mb-2">프리미엄 구성</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  프리미엄 제품으로 구성된 최고급 세트
+                </p>
+                
+                {/* 적용된 장비 목록 */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                    <span className="text-muted-foreground">GPS 플로터 (12")</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                    <span className="text-muted-foreground">레이더 4kW</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                    <span className="text-muted-foreground">VHF 무선기</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                    <span className="text-muted-foreground">어군탐지기</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                    <span className="text-muted-foreground">자동조타</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
+                    <p className="text-lg font-bold text-amber-900">
+                      {formatPrice(2300000 + 3800000 + 450000 + 2890000 + 2800000)}
+                    </p>
+                  </div>
+                  <button className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 font-semibold text-sm">
+                    더보기
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 가성비세트 */}
+            <div
+              onClick={() => handleSetClick('value')}
+              className="group relative bg-white border-2 border-blue-300 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 transition-all cursor-pointer"
+            >
+              {/* 배 이미지 영역 */}
+              <div className="relative bg-gradient-to-b from-blue-100 to-blue-200 h-48 overflow-hidden">
+                <svg
+                  viewBox="0 0 800 450"
+                  className="w-full h-full"
+                  style={{ background: 'linear-gradient(to bottom, #e0f2fe, #bae6fd)' }}
+                >
+                  {/* 바다 파도 */}
+                  <path
+                    d="M 0 400 Q 100 390 200 395 Q 300 400 400 395 Q 500 390 600 395 Q 700 400 800 395 L 800 450 L 0 450 Z"
+                    fill="#3b82f6"
+                    opacity="0.4"
+                  />
+                  {/* 배 본체 */}
+                  <path
+                    d="M 120 280 Q 180 240 250 240 L 550 240 Q 620 240 680 280 L 680 360 Q 620 400 550 400 L 250 400 Q 180 400 120 360 Z"
+                    fill="#ffffff"
+                    stroke="#1e40af"
+                    strokeWidth="4"
+                  />
+                  {/* 플라이브리지 */}
+                  <rect x="280" y="180" width="240" height="80" fill="#f0f9ff" stroke="#1e40af" strokeWidth="2" rx="8" />
+                  {/* 마스트 */}
+                  <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
+                  <circle cx="400" cy="60" r="18" fill="#1e40af" />
+                  {/* 적용된 장비 마커 */}
+                  <circle cx="360" cy="220" r="8" fill="#3b82f6" stroke="#1e40af" strokeWidth="2" />
+                  <circle cx="160" cy="240" r="6" fill="#3b82f6" stroke="#1e40af" strokeWidth="2" />
+                  <circle cx="600" cy="320" r="6" fill="#3b82f6" stroke="#1e40af" strokeWidth="2" />
+                </svg>
+                <div className="absolute top-2 left-2 flex items-center gap-2 bg-blue-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  <TrendingUp className="w-4 h-4" />
+                  가성비세트
+                </div>
+              </div>
+              
+              {/* 정보 영역 */}
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-blue-900 mb-2">추천 구성</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  합리적인 가격의 실용적인 세트
+                </p>
+                
+                {/* 적용된 장비 목록 */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <span className="text-muted-foreground">GPS 플로터 (7")</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <span className="text-muted-foreground">VHF 무선기</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    <span className="text-muted-foreground">어군탐지기</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
+                    <p className="text-lg font-bold text-blue-900">
+                      {formatPrice(1450000 + 380000 + 1250000)}
+                    </p>
+                  </div>
+                  <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 font-semibold text-sm">
+                    더보기
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 가심비세트 */}
+            <div
+              onClick={() => handleSetClick('budget')}
+              className="group relative bg-white border-2 border-green-300 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 transition-all cursor-pointer"
+            >
+              {/* 배 이미지 영역 */}
+              <div className="relative bg-gradient-to-b from-blue-100 to-blue-200 h-48 overflow-hidden">
+                <svg
+                  viewBox="0 0 800 450"
+                  className="w-full h-full"
+                  style={{ background: 'linear-gradient(to bottom, #e0f2fe, #bae6fd)' }}
+                >
+                  {/* 바다 파도 */}
+                  <path
+                    d="M 0 400 Q 100 390 200 395 Q 300 400 400 395 Q 500 390 600 395 Q 700 400 800 395 L 800 450 L 0 450 Z"
+                    fill="#3b82f6"
+                    opacity="0.4"
+                  />
+                  {/* 배 본체 */}
+                  <path
+                    d="M 120 280 Q 180 240 250 240 L 550 240 Q 620 240 680 280 L 680 360 Q 620 400 550 400 L 250 400 Q 180 400 120 360 Z"
+                    fill="#ffffff"
+                    stroke="#1e40af"
+                    strokeWidth="4"
+                  />
+                  {/* 플라이브리지 */}
+                  <rect x="280" y="180" width="240" height="80" fill="#f0f9ff" stroke="#1e40af" strokeWidth="2" rx="8" />
+                  {/* 마스트 */}
+                  <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
+                  <circle cx="400" cy="60" r="18" fill="#1e40af" />
+                  {/* 적용된 장비 마커 */}
+                  <circle cx="360" cy="220" r="8" fill="#10b981" stroke="#1e40af" strokeWidth="2" />
+                  <circle cx="160" cy="240" r="6" fill="#10b981" stroke="#1e40af" strokeWidth="2" />
+                </svg>
+                <div className="absolute top-2 left-2 flex items-center gap-2 bg-green-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                  <Wallet className="w-4 h-4" />
+                  가심비세트
+                </div>
+              </div>
+              
+              {/* 정보 영역 */}
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-green-900 mb-2">경제적 구성</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  경제적인 가격의 기본 세트
+                </p>
+                
+                {/* 적용된 장비 목록 */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span className="text-muted-foreground">GPS 플로터 (9")</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span className="text-muted-foreground">VHF 무선기</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
+                    <p className="text-lg font-bold text-green-900">
+                      {formatPrice(1850000 + 380000)}
+                    </p>
+                  </div>
+                  <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 font-semibold text-sm">
+                    더보기
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -178,20 +432,6 @@ export function MainPage() {
             >
               <img src="/simrad_logo.png" alt="SIMRAD" className="w-full h-full max-h-20 object-contain" />
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Best Products */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl mb-8 text-center">
-            이달의 인기 상품
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {bestProducts.map((product) => (
-              <ProductCard key={product.id} {...product} />
-            ))}
           </div>
         </div>
       </section>
