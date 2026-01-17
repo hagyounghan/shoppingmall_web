@@ -21,6 +21,7 @@ import {
 const navigationItems = [
   { label: '명장소개', to: ROUTES.ABOUT },
   { label: '브랜드관', to: ROUTES.BRANDS },
+  { label: '시뮬레이터', to: ROUTES.SIMULATOR },
   { label: 'A/S 신청', to: ROUTES.SERVICE },
   { label: '컨설팅', to: ROUTES.CONSULTING },
   { label: '낚시포인트', to: ROUTES.FISHING_POINTS },

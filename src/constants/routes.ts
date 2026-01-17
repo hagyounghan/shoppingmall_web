@@ -13,5 +13,6 @@ export const ROUTES = {
   LOGIN: '/login',
   CART: '/cart',
   WISHLIST: '/wishlist',
+  SIMULATOR: '/simulator',
 } as const;
 

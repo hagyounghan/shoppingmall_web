@@ -12,6 +12,7 @@ import { CategoryPage } from '../app/pages/CategoryPage';
 import { LoginPage } from '../app/pages/LoginPage';
 import { CartPage } from '../app/pages/CartPage';
 import { WishlistPage } from '../app/pages/WishlistPage';
+import { SimulatorPage } from '../app/pages/SimulatorPage';
 import { ROUTES } from '../constants/routes';
 
 export function AppRoutes() {
@@ -30,6 +31,7 @@ export function AppRoutes() {
       <Route path={ROUTES.LOGIN} element={<LoginPage />} />
       <Route path={ROUTES.CART} element={<CartPage />} />
       <Route path={ROUTES.WISHLIST} element={<WishlistPage />} />
+      <Route path={ROUTES.SIMULATOR} element={<SimulatorPage />} />
     </Routes>
   );
 }

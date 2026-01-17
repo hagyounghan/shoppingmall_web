@@ -73,3 +73,26 @@ export interface WishlistItem {
   tag?: 'BEST' | 'NEW' | 'SALE';
 }
 
+export interface EquipmentPosition {
+  id: string;
+  name: string;
+  x: number; // 배 이미지 내 x 좌표 (퍼센트)
+  y: number; // 배 이미지 내 y 좌표 (퍼센트)
+  category: string;
+}
+
+export interface SelectedEquipment {
+  positionId: string;
+  product: Product | null;
+}
+
+export interface EquipmentSet {
+  id: string;
+  name: string;
+  description: string;
+  equipment: {
+    positionId: string;
+    productId: string;
+  }[];
+}
+
