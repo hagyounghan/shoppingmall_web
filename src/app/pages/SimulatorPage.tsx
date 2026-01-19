@@ -191,7 +191,7 @@ export function SimulatorPage() {
 
     // 브랜드 필터
     if (selectedBrand !== 'all') {
-      products = products.filter(p => 
+      products = products.filter(p =>
         p.name.toUpperCase().includes(selectedBrand.toUpperCase())
       );
     }
@@ -220,22 +220,20 @@ export function SimulatorPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setBoatType('fishing')}
-                className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${
-                  boatType === 'fishing'
+                className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${boatType === 'fishing'
                     ? 'bg-primary text-primary-foreground shadow-md'
                     : 'text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
               >
                 <Anchor className="w-5 h-5" />
                 어선용
               </button>
               <button
                 onClick={() => setBoatType('leisure')}
-                className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${
-                  boatType === 'leisure'
+                className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${boatType === 'leisure'
                     ? 'bg-primary text-primary-foreground shadow-md'
                     : 'text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
               >
                 <Ship className="w-5 h-5" />
                 레저용
@@ -358,14 +356,15 @@ export function SimulatorPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 배 이미지 영역 */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg p-8 shadow-sm">
-              <h2 className="text-2xl font-bold mb-6">선박 장비 배치</h2>
-              <div className="relative bg-gradient-to-b from-blue-100 to-blue-200 rounded-lg overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '500px' }}>
+            <div className="bg-white rounded-lg p-4 md:p-8 shadow-sm">
+              <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">선박 장비 배치</h2>
+              <div className="relative bg-gradient-to-b from-blue-100 to-blue-200 rounded-lg overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '300px', maxHeight: '600px' }}>
                 {/* 배 이미지 배경 */}
                 <svg
                   viewBox="0 0 800 450"
                   className="w-full h-full"
-                  style={{ background: 'linear-gradient(to bottom, #e0f2fe, #bae6fd)' }}
+                  preserveAspectRatio="xMidYMid meet"
+                  style={{ background: 'linear-gradient(to bottom, #e0f2fe, #bae6fd)', maxWidth: '100%', height: 'auto' }}
                 >
                   {/* 바다 파도 - 더 디테일하게 */}
                   <path
@@ -378,7 +377,7 @@ export function SimulatorPage() {
                     fill="#2563eb"
                     opacity="0.3"
                   />
-                  
+
                   {/* 배 본체 (선박 하부) - 더 디테일하게 */}
                   <path
                     d="M 120 280 Q 180 240 250 240 L 550 240 Q 620 240 680 280 L 680 360 Q 620 400 550 400 L 250 400 Q 180 400 120 360 Z"
@@ -386,45 +385,45 @@ export function SimulatorPage() {
                     stroke="#1e40af"
                     strokeWidth="4"
                   />
-                  
+
                   {/* 배 측면 구조 라인 */}
                   <line x1="250" y1="240" x2="250" y2="400" stroke="#1e40af" strokeWidth="2" opacity="0.5" />
                   <line x1="550" y1="240" x2="550" y2="400" stroke="#1e40af" strokeWidth="2" opacity="0.5" />
-                  
+
                   {/* 선박 측면 패널 */}
                   <rect x="260" y="260" width="280" height="120" fill="#f8fafc" stroke="#1e40af" strokeWidth="1" opacity="0.3" rx="4" />
-                  
+
                   {/* 배 상부 구조물 (플라이브리지) */}
                   <rect x="280" y="180" width="240" height="80" fill="#f0f9ff" stroke="#1e40af" strokeWidth="2" rx="8" />
                   <rect x="300" y="200" width="200" height="40" fill="#ffffff" stroke="#1e40af" strokeWidth="1" rx="4" />
-                  
+
                   {/* 플라이브리지 창문 - 더 디테일하게 */}
                   <rect x="320" y="210" width="30" height="20" fill="#87ceeb" stroke="#1e40af" strokeWidth="1" rx="2" />
                   <rect x="360" y="210" width="30" height="20" fill="#87ceeb" stroke="#1e40af" strokeWidth="1" rx="2" />
                   <rect x="400" y="210" width="30" height="20" fill="#87ceeb" stroke="#1e40af" strokeWidth="1" rx="2" />
                   <rect x="440" y="210" width="30" height="20" fill="#87ceeb" stroke="#1e40af" strokeWidth="1" rx="2" />
-                  
+
                   {/* 창문 프레임 */}
                   <line x1="335" y1="210" x2="335" y2="230" stroke="#1e40af" strokeWidth="0.5" />
                   <line x1="375" y1="210" x2="375" y2="230" stroke="#1e40af" strokeWidth="0.5" />
                   <line x1="415" y1="210" x2="415" y2="230" stroke="#1e40af" strokeWidth="0.5" />
                   <line x1="455" y1="210" x2="455" y2="230" stroke="#1e40af" strokeWidth="0.5" />
-                  
+
                   {/* 마스트 */}
                   <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
                   <line x1="395" y1="180" x2="395" y2="60" stroke="#1e3a8a" strokeWidth="2" opacity="0.5" />
                   <line x1="405" y1="180" x2="405" y2="60" stroke="#1e3a8a" strokeWidth="2" opacity="0.5" />
-                  
+
                   {/* 마스트 상단 */}
                   <circle cx="400" cy="60" r="18" fill="#1e40af" />
                   <circle cx="400" cy="60" r="12" fill="#3b82f6" />
-                  
+
                   {/* 레이더 돔 (마스트 위) */}
                   <circle cx="400" cy="50" r="12" fill="#cbd5e1" stroke="#1e40af" strokeWidth="2" />
                   <circle cx="400" cy="50" r="8" fill="#94a3b8" />
                   <line x1="392" y1="50" x2="408" y2="50" stroke="#1e40af" strokeWidth="1" />
                   <line x1="400" y1="42" x2="400" y2="58" stroke="#1e40af" strokeWidth="1" />
-                  
+
                   {/* 어선용 특수 구조물 */}
                   {boatType === 'fishing' && (
                     <>
@@ -439,7 +438,7 @@ export function SimulatorPage() {
                       <rect x="590" y="310" width="15" height="15" fill="#87ceeb" stroke="#1e40af" strokeWidth="1" />
                     </>
                   )}
-                  
+
                   {/* 레저용 특수 구조물 */}
                   {boatType === 'leisure' && (
                     <>
@@ -457,7 +456,7 @@ export function SimulatorPage() {
                       <line x1="630" y1="280" x2="630" y2="360" stroke="#1e40af" strokeWidth="1" opacity="0.5" />
                     </>
                   )}
-                  
+
                   {/* 선수부 - 더 디테일하게 */}
                   <path
                     d="M 120 280 Q 100 260 90 280 Q 100 300 120 320"
@@ -474,7 +473,7 @@ export function SimulatorPage() {
                   {/* 선수부 앵커 */}
                   <circle cx="95" cy="290" r="4" fill="#64748b" />
                   <line x1="95" y1="290" x2="100" y2="285" stroke="#64748b" strokeWidth="1" />
-                  
+
                   {/* 선미부 - 더 디테일하게 */}
                   <path
                     d="M 680 280 Q 700 260 710 280 Q 700 300 680 320"
@@ -488,16 +487,16 @@ export function SimulatorPage() {
                     stroke="#1e40af"
                     strokeWidth="1"
                   />
-                  
+
                   {/* 선박 측면 장식 라인 */}
                   <line x1="200" y1="280" x2="600" y2="280" stroke="#1e40af" strokeWidth="2" opacity="0.3" />
                   <line x1="200" y1="360" x2="600" y2="360" stroke="#1e40af" strokeWidth="2" opacity="0.3" />
-                  
+
                   {/* 선박 이름/번호 */}
                   <text x="400" y="350" textAnchor="middle" fontSize="16" fill="#1e40af" fontWeight="bold" opacity="0.6">
                     {boatType === 'fishing' ? '어선' : '레저선'}
                   </text>
-                  
+
                   {/* 선박 그림자 */}
                   <ellipse cx="400" cy="420" rx="280" ry="15" fill="#1e40af" opacity="0.2" />
                 </svg>
@@ -533,9 +532,8 @@ export function SimulatorPage() {
                       ) : (
                         <div className="relative">
                           <div
-                            className={`w-6 h-6 rounded-full border-2 transition-all ${
-                              'bg-white border-primary hover:scale-125 shadow-md'
-                            }`}
+                            className={`w-6 h-6 rounded-full border-2 transition-all ${'bg-white border-primary hover:scale-125 shadow-md'
+                              }`}
                           />
                           <div className="absolute top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-primary text-white px-2 py-1 rounded text-xs z-20 shadow-md">
                             {position.name}
@@ -621,7 +619,7 @@ export function SimulatorPage() {
             <h2 className="text-2xl font-bold mb-4">
               {selectedPosition ? `${selectedPosition.name} 선택` : '제품 선택'}
             </h2>
-            
+
             {/* 장비 기기 선택 안내 */}
             {!selectedPosition ? (
               <div className="text-center py-16 border-2 border-dashed border-border rounded-lg bg-secondary/50">
@@ -721,11 +719,10 @@ export function SimulatorPage() {
                     {filteredProducts.map((product) => (
                       <div
                         key={product.id}
-                        className={`cursor-pointer group block bg-white border-2 rounded-lg overflow-hidden transition-all ${
-                          selectedEquipment[selectedPosition.id]?.product?.id === product.id
+                        className={`cursor-pointer group block bg-white border-2 rounded-lg overflow-hidden transition-all ${selectedEquipment[selectedPosition.id]?.product?.id === product.id
                             ? 'border-primary shadow-lg scale-105'
                             : 'border-border hover:border-primary hover:shadow-md'
-                        }`}
+                          }`}
                         onClick={() => handleProductSelect(product)}
                       >
                         <div className="aspect-square w-full overflow-hidden bg-muted">

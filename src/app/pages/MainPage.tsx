@@ -200,26 +200,63 @@ export function MainPage() {
                   <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
                   <circle cx="400" cy="60" r="18" fill="#1e40af" />
                   <circle cx="400" cy="50" r="12" fill="#cbd5e1" stroke="#1e40af" strokeWidth="2" />
-                  {/* 적용된 장비 마커 */}
-                  <circle cx="360" cy="220" r="8" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
-                  <circle cx="400" cy="50" r="6" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
-                  <circle cx="160" cy="240" r="6" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
-                  <circle cx="600" cy="320" r="6" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
-                  <circle cx="480" cy="340" r="6" fill="#fbbf24" stroke="#1e40af" strokeWidth="2" />
                 </svg>
+                {/* 제품 이미지 오버레이 */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* GPS 플로터 (플라이브리지) */}
+                  <div className="absolute" style={{ left: '45%', top: '49%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400"
+                      alt="GPS 플로터"
+                      className="w-12 h-12 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                  {/* 레이더 (마스트 상단) */}
+                  <div className="absolute" style={{ left: '50%', top: '11%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1758248421325-6f3a1d92075a?w=400"
+                      alt="레이더"
+                      className="w-10 h-10 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                  {/* VHF 무선기 (선수부) */}
+                  <div className="absolute" style={{ left: '20%', top: '53%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400"
+                      alt="VHF 무선기"
+                      className="w-10 h-10 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                  {/* 어군탐지기 (선미부) */}
+                  <div className="absolute" style={{ left: '75%', top: '71%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400"
+                      alt="어군탐지기"
+                      className="w-10 h-10 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                  {/* 자동조타 (선미부 중앙) */}
+                  <div className="absolute" style={{ left: '60%', top: '76%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1719448081072-8090553a77fe?w=400"
+                      alt="자동조타"
+                      className="w-10 h-10 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                </div>
                 <div className="absolute top-2 left-2 flex items-center gap-2 bg-amber-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
                   <Crown className="w-4 h-4" />
                   명장세트
                 </div>
               </div>
-              
+
               {/* 정보 영역 */}
               <div className="p-6">
                 <h3 className="text-xl font-bold text-amber-900 mb-2">프리미엄 구성</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   프리미엄 제품으로 구성된 최고급 세트
                 </p>
-                
+
                 {/* 적용된 장비 목록 */}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm">
@@ -243,7 +280,7 @@ export function MainPage() {
                     <span className="text-muted-foreground">자동조타</span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
@@ -289,24 +326,47 @@ export function MainPage() {
                   {/* 마스트 */}
                   <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
                   <circle cx="400" cy="60" r="18" fill="#1e40af" />
-                  {/* 적용된 장비 마커 */}
-                  <circle cx="360" cy="220" r="8" fill="#3b82f6" stroke="#1e40af" strokeWidth="2" />
-                  <circle cx="160" cy="240" r="6" fill="#3b82f6" stroke="#1e40af" strokeWidth="2" />
-                  <circle cx="600" cy="320" r="6" fill="#3b82f6" stroke="#1e40af" strokeWidth="2" />
                 </svg>
+                {/* 제품 이미지 오버레이 */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* GPS 플로터 (플라이브리지) */}
+                  <div className="absolute" style={{ left: '45%', top: '49%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400"
+                      alt="GPS 플로터"
+                      className="w-12 h-12 rounded-lg border-2 border-blue-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                  {/* VHF 무선기 (선수부) */}
+                  <div className="absolute" style={{ left: '20%', top: '53%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400"
+                      alt="VHF 무선기"
+                      className="w-10 h-10 rounded-lg border-2 border-blue-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                  {/* 어군탐지기 (선미부) */}
+                  <div className="absolute" style={{ left: '75%', top: '71%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400"
+                      alt="어군탐지기"
+                      className="w-10 h-10 rounded-lg border-2 border-blue-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                </div>
                 <div className="absolute top-2 left-2 flex items-center gap-2 bg-blue-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
                   <TrendingUp className="w-4 h-4" />
                   가성비세트
                 </div>
               </div>
-              
+
               {/* 정보 영역 */}
               <div className="p-6">
                 <h3 className="text-xl font-bold text-blue-900 mb-2">추천 구성</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   합리적인 가격의 실용적인 세트
                 </p>
-                
+
                 {/* 적용된 장비 목록 */}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm">
@@ -322,7 +382,7 @@ export function MainPage() {
                     <span className="text-muted-foreground">어군탐지기</span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
@@ -368,23 +428,39 @@ export function MainPage() {
                   {/* 마스트 */}
                   <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
                   <circle cx="400" cy="60" r="18" fill="#1e40af" />
-                  {/* 적용된 장비 마커 */}
-                  <circle cx="360" cy="220" r="8" fill="#10b981" stroke="#1e40af" strokeWidth="2" />
-                  <circle cx="160" cy="240" r="6" fill="#10b981" stroke="#1e40af" strokeWidth="2" />
                 </svg>
+                {/* 제품 이미지 오버레이 */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* GPS 플로터 (플라이브리지) */}
+                  <div className="absolute" style={{ left: '45%', top: '49%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400"
+                      alt="GPS 플로터"
+                      className="w-12 h-12 rounded-lg border-2 border-green-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                  {/* VHF 무선기 (선수부) */}
+                  <div className="absolute" style={{ left: '20%', top: '53%', transform: 'translate(-50%, -50%)' }}>
+                    <img
+                      src="https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400"
+                      alt="VHF 무선기"
+                      className="w-10 h-10 rounded-lg border-2 border-green-500 bg-white p-1 shadow-lg object-cover"
+                    />
+                  </div>
+                </div>
                 <div className="absolute top-2 left-2 flex items-center gap-2 bg-green-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
                   <Wallet className="w-4 h-4" />
                   가심비세트
                 </div>
               </div>
-              
+
               {/* 정보 영역 */}
               <div className="p-6">
                 <h3 className="text-xl font-bold text-green-900 mb-2">경제적 구성</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   경제적인 가격의 기본 세트
                 </p>
-                
+
                 {/* 적용된 장비 목록 */}
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm">
@@ -396,7 +472,7 @@ export function MainPage() {
                     <span className="text-muted-foreground">VHF 무선기</span>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
@@ -415,26 +491,6 @@ export function MainPage() {
         </div>
       </section>
 
-      {/* Brand Banners */}
-      <section className="py-16 bg-secondary">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Link to={ROUTES.BRAND_DETAIL('lowrance')} className="bg-white p-8 border border-border hover:border-primary transition-colors flex items-center justify-center h-32">
-              <img src="/lowrance_logo.png" alt="LOWRANCE" className="w-full h-full max-h-20 object-contain" />
-            </Link>
-            <Link to={ROUTES.BRAND_DETAIL('garmin')} className="bg-black p-8 border border-border hover:border-primary transition-colors flex items-center justify-center h-32">
-              <img src="/garmin_logo.png" alt="GARMIN" className="w-full h-full max-h-20 object-contain" />
-            </Link>
-            <Link
-              to={ROUTES.BRAND_DETAIL('simrad')}
-              className="p-8 border border-border hover:border-primary transition-colors flex items-center justify-center h-32"
-              style={{ backgroundColor: 'oklch(0.56 0.23 27.53)' }}
-            >
-              <img src="/simrad_logo.png" alt="SIMRAD" className="w-full h-full max-h-20 object-contain" />
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* Bottom Services */}
       <section className="py-16 bg-secondary">

@@ -18,13 +18,34 @@ import {
   DropdownMenuSeparator,
 } from './ui/dropdown-menu';
 
-const navigationItems = [
+interface NavigationItem {
+  label: string;
+  to: string;
+  subItems?: { label: string; to: string }[];
+}
+
+const navigationItems: NavigationItem[] = [
   { label: '명장소개', to: ROUTES.ABOUT },
-  { label: '브랜드관', to: ROUTES.BRANDS },
   { label: '시뮬레이터', to: ROUTES.SIMULATOR },
-  { label: 'A/S 신청', to: ROUTES.SERVICE },
-  { label: '컨설팅', to: ROUTES.CONSULTING },
-  { label: '낚시포인트', to: ROUTES.FISHING_POINTS },
+  { label: '브랜드관', to: ROUTES.BRANDS },
+  { label: '사용성 서비스', to: ROUTES.USABILITY_SERVICE },
+  {
+    label: '컨설팅',
+    to: ROUTES.PURCHASE_CONSULTING,
+    subItems: [
+      { label: '구매컨설팅', to: ROUTES.PURCHASE_CONSULTING },
+      { label: '사용성 컨설팅', to: ROUTES.USABILITY_CONSULTING },
+    ]
+  },
+  {
+    label: '자료실',
+    to: ROUTES.RESOURCE_CENTER,
+    subItems: [
+      { label: '강의실', to: ROUTES.RESOURCE_LECTURE },
+      { label: '문의답변', to: ROUTES.RESOURCE_QNA },
+      { label: '낚시포인트', to: ROUTES.RESOURCE_FISHING_POINTS },
+    ]
+  },
   { label: '마이페이지', to: ROUTES.MY_PAGE },
 ];
 
@@ -163,13 +184,32 @@ export function Header() {
                       {navigationItems.map((item) => (
                         <React.Fragment key={item.label}>
                           <li>
-                            <Link
-                              to={item.to}
-                              className="block py-2 hover:text-primary transition-colors text-lg"
-                              onClick={() => setIsOpen(false)}
-                            >
-                              {item.label}
-                            </Link>
+                            {item.subItems ? (
+                              <div>
+                                <div className="py-2 text-lg font-semibold">{item.label}</div>
+                                <ul className="ml-4 flex flex-col gap-2">
+                                  {item.subItems.map((subItem) => (
+                                    <li key={subItem.label}>
+                                      <Link
+                                        to={subItem.to}
+                                        className="block py-1 hover:text-primary transition-colors"
+                                        onClick={() => setIsOpen(false)}
+                                      >
+                                        {subItem.label}
+                                      </Link>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : (
+                              <Link
+                                to={item.to}
+                                className="block py-2 hover:text-primary transition-colors text-lg"
+                                onClick={() => setIsOpen(false)}
+                              >
+                                {item.label}
+                              </Link>
+                            )}
                           </li>
                           {/* Mobile Products Section after 브랜드관 */}
                           {item.label === '브랜드관' && (
@@ -212,9 +252,30 @@ export function Header() {
             {navigationItems.map((item) => (
               <React.Fragment key={item.label}>
                 <li>
-                  <Link to={item.to} className="hover:text-primary transition-colors">
-                    {item.label}
-                  </Link>
+                  {item.subItems ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1 hover:text-primary transition-colors outline-none">
+                        {item.label}
+                        <ChevronDown className="w-4 h-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="w-48">
+                        {item.subItems.map((subItem) => (
+                          <DropdownMenuItem key={subItem.label} asChild>
+                            <Link
+                              to={subItem.to}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <span>{subItem.label}</span>
+                            </Link>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <Link to={item.to} className="hover:text-primary transition-colors">
+                      {item.label}
+                    </Link>
+                  )}
                 </li>
                 {/* Products Dropdown after 브랜드관 */}
                 {item.label === '브랜드관' && (
