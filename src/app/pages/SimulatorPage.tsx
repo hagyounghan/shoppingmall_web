@@ -47,7 +47,7 @@ const EQUIPMENT_SETS = {
   premium: {
     id: 'premium',
     name: '명장세트',
-    description: '프리미엄 제품으로 구성된 최고급 세트',
+    description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트',
     equipment: [
       { positionId: 'gps-plotter', productId: '1' },
       { positionId: 'radar', productId: '4' },
@@ -221,8 +221,8 @@ export function SimulatorPage() {
               <button
                 onClick={() => setBoatType('fishing')}
                 className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${boatType === 'fishing'
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-muted-foreground hover:text-foreground'
                   }`}
               >
                 <Anchor className="w-5 h-5" />
@@ -231,8 +231,8 @@ export function SimulatorPage() {
               <button
                 onClick={() => setBoatType('leisure')}
                 className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${boatType === 'leisure'
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-muted-foreground hover:text-foreground'
                   }`}
               >
                 <Ship className="w-5 h-5" />
@@ -262,7 +262,7 @@ export function SimulatorPage() {
               <Sparkles className="w-5 h-5 text-amber-500" />
             </div>
             <p className="text-sm text-amber-800 mb-4 line-clamp-2">
-              프리미엄 제품으로 구성된 최고급 세트
+              명장님이 선택한 실용적인 픽으로 구성된 최고급 세트
             </p>
             <div className="flex items-center justify-between">
               <div>
@@ -720,8 +720,8 @@ export function SimulatorPage() {
                       <div
                         key={product.id}
                         className={`cursor-pointer group block bg-white border-2 rounded-lg overflow-hidden transition-all ${selectedEquipment[selectedPosition.id]?.product?.id === product.id
-                            ? 'border-primary shadow-lg scale-105'
-                            : 'border-border hover:border-primary hover:shadow-md'
+                          ? 'border-primary shadow-lg scale-105'
+                          : 'border-border hover:border-primary hover:shadow-md'
                           }`}
                         onClick={() => handleProductSelect(product)}
                       >

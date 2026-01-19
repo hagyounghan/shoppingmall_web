@@ -254,7 +254,7 @@ export function MainPage() {
               <div className="p-6">
                 <h3 className="text-xl font-bold text-amber-900 mb-2">프리미엄 구성</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  프리미엄 제품으로 구성된 최고급 세트
+                  명장님이 선택한 실용적인 픽으로 구성된 최고급 세트
                 </p>
 
                 {/* 적용된 장비 목록 */}
