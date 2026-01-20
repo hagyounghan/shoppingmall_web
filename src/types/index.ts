@@ -96,3 +96,12 @@ export interface EquipmentSet {
   }[];
 }
 
+export interface RelatedProduct {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  description: string;
+  category: string; // 'transducer', 'heading-sensor', 'antenna' 등
+}
+
