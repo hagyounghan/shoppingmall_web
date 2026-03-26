@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Package, MessageCircle, Megaphone,
   Plus, Edit, Trash2, Ship, User,
-  X, Image as ImageIcon, Layout, Settings, Sparkles, Save,
+  X, Image as ImageIcon, Layout, Sparkles, Save,
   ShoppingCart, ChevronDown, Star, ChevronUp, Search, Loader2,
   Link2, HelpCircle, BookOpen, FileText
 } from 'lucide-react';
@@ -12,7 +12,8 @@ import {
   Product, Brand, Category, PaginatedProducts, PaginatedResponse,
   OrderResponse, ORDER_STATUS_LABELS, OrderStatus, PAYMENT_METHOD_LABELS,
   FeaturedProduct, Notice, Lecture, Faq, InquiryItem,
-  ConsultingRequest, ConsultingStatus, CONSULTING_STATUS_LABELS
+  ConsultingRequest, ConsultingStatus, CONSULTING_STATUS_LABELS,
+  SimulatorSet
 } from '../../types';
 import { formatPrice } from '../../utils/format';
 
@@ -130,12 +131,20 @@ export default function AdminDashboard() {
   const [faqForm, setFaqForm] = useState({ question: '', answer: '', category: '', order: '' });
   const [faqFormLoading, setFaqFormLoading] = useState(false);
 
-  // 메인/추천 관리 목업
+  // 시뮬레이터 세트 관리
+  const [simSets, setSimSets] = useState<SimulatorSet[]>([]);
+  const [simSetsLoading, setSimSetsLoading] = useState(false);
+  const [isAddingSimSet, setIsAddingSimSet] = useState(false);
+  const [editingSimSetId, setEditingSimSetId] = useState<string | null>(null);
+  const [simSetForm, setSimSetForm] = useState({ type: 'fishing_vessel', name: '', description: '', isActive: true });
+  const [simSetItems, setSimSetItems] = useState<Array<{ productId: string; categoryId: string; productName: string }>>([]);
+  const [simSetFormLoading, setSimSetFormLoading] = useState(false);
+  const [simItemSearch, setSimItemSearch] = useState('');
+  const [simItemSearchResults, setSimItemSearchResults] = useState<Product[]>([]);
+  const [simItemSearchLoading, setSimItemSearchLoading] = useState(false);
+
+  // 메인/추천 관리 목업 (배너만 유지)
   const banners = [{ id: 1, title: "30년 경력 명장의 선택", subtitle: "최신 해양 장비 특별전", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200", isActive: true }];
-  const recSets = [
-    { id: 'premium', title: '프리미엄 전문가 패키지', description: '원거리 항해 및 전문 어업용 최상위 구성', totalPrice: 12500000, items: ['GARMIN 8612', 'DRS4W 레이더', 'VHF 무선기'] },
-    { id: 'value', title: '가성비 실속 패키지', description: '레저 보트 입문자를 위한 알짜배기 구성', totalPrice: 4500000, items: ['LOWRANCE HDS-7', '기본 소나'] },
-  ];
 
   // 브랜드/카테고리 로드
   useEffect(() => {
@@ -156,6 +165,7 @@ export default function AdminDashboard() {
     if (currentMenu === 'lecture_mgmt') loadLectures();
     if (currentMenu === 'inquiry_mgmt') loadInquiries();
     if (currentMenu === 'faq_mgmt') loadFaqs();
+    if (currentMenu === 'main_mgmt') loadSimSets();
   }, [currentMenu]);
 
   // 통계 로드
@@ -639,6 +649,102 @@ export default function AdminDashboard() {
     }
   };
 
+  // 시뮬레이터 세트 함수들
+  const loadSimSets = async () => {
+    setSimSetsLoading(true);
+    try {
+      const res = await apiGet<{ data: SimulatorSet[] } | SimulatorSet[]>(API_ENDPOINTS.SIMULATOR_SETS);
+      const data = Array.isArray(res) ? res : (res as { data: SimulatorSet[] }).data ?? [];
+      setSimSets(data);
+    } catch {
+      setSimSets([]);
+    } finally {
+      setSimSetsLoading(false);
+    }
+  };
+
+  const handleSimItemSearch = async () => {
+    if (!simItemSearch.trim()) return;
+    setSimItemSearchLoading(true);
+    try {
+      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(simItemSearch)}&take=10`);
+      setSimItemSearchResults(res.data ?? []);
+    } catch {
+      setSimItemSearchResults([]);
+    } finally {
+      setSimItemSearchLoading(false);
+    }
+  };
+
+  const addSimItem = (product: Product) => {
+    if (simSetItems.some(i => i.productId === product.id)) return;
+    setSimSetItems(prev => [...prev, { productId: product.id, categoryId: product.categoryId, productName: product.name }]);
+    setSimItemSearch('');
+    setSimItemSearchResults([]);
+  };
+
+  const removeSimItem = (productId: string) => {
+    setSimSetItems(prev => prev.filter(i => i.productId !== productId));
+  };
+
+  const startEditSimSet = (set: SimulatorSet) => {
+    setEditingSimSetId(set.id);
+    setSimSetForm({ type: set.type, name: set.name, description: set.description ?? '', isActive: set.isActive });
+    setSimSetItems((set.items || []).map(item => ({
+      productId: item.productId,
+      categoryId: item.categoryId,
+      productName: products.find(p => p.id === item.productId)?.name ?? item.productId.slice(0, 8) + '...',
+    })));
+    setIsAddingSimSet(false);
+  };
+
+  const resetSimSetForm = () => {
+    setSimSetForm({ type: 'fishing_vessel', name: '', description: '', isActive: true });
+    setSimSetItems([]);
+    setSimItemSearch('');
+    setSimItemSearchResults([]);
+    setIsAddingSimSet(false);
+    setEditingSimSetId(null);
+  };
+
+  const handleSaveSimSet = async () => {
+    if (!simSetForm.name || simSetItems.length === 0) {
+      alert('세트명과 장비를 1개 이상 입력해주세요.');
+      return;
+    }
+    setSimSetFormLoading(true);
+    try {
+      const payload = {
+        type: simSetForm.type,
+        name: simSetForm.name,
+        description: simSetForm.description || undefined,
+        isActive: simSetForm.isActive,
+        items: simSetItems.map(i => ({ productId: i.productId, categoryId: i.categoryId })),
+      };
+      if (editingSimSetId) {
+        await apiPatch(`${API_ENDPOINTS.SIMULATOR_SETS}/${editingSimSetId}`, payload);
+      } else {
+        await apiPost(API_ENDPOINTS.SIMULATOR_SETS, payload);
+      }
+      resetSimSetForm();
+      await loadSimSets();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '저장에 실패했습니다.');
+    } finally {
+      setSimSetFormLoading(false);
+    }
+  };
+
+  const handleDeleteSimSet = async (id: string, name: string) => {
+    if (!confirm(`"${name}" 세트를 삭제하시겠습니까?`)) return;
+    try {
+      await apiDelete(`${API_ENDPOINTS.SIMULATOR_SETS}/${id}`);
+      await loadSimSets();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '삭제에 실패했습니다.');
+    }
+  };
+
   const selectedProduct = recProductId ? products.find(p => p.id === recProductId) : null;
   const isProductFormValid = !!productForm.name && !!productForm.price && !!productForm.brandId && !!productForm.categoryId;
 
@@ -1082,29 +1188,149 @@ export default function AdminDashboard() {
             </section>
 
             <section>
-              <h2 className="text-2xl font-black mb-4 flex items-center gap-2">
-                <Sparkles className="text-orange-500"/> 명장 추천 세트 품목 수정
-              </h2>
-              <div className="grid grid-cols-2 gap-6">
-                {recSets.map(set => (
-                  <div key={set.id} className="bg-white p-6 rounded-2xl border-2 border-slate-100 shadow-sm hover:border-blue-200 transition">
-                    <div className="flex justify-between items-center mb-4 text-blue-600 font-black italic">
-                      <span>{set.id.toUpperCase()} SET</span>
-                      <Settings size={18} className="text-slate-300"/>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-black flex items-center gap-2">
+                  <Sparkles className="text-orange-500"/> 시뮬레이터 세트 관리
+                </h2>
+                <button
+                  onClick={() => { resetSimSetForm(); setIsAddingSimSet(true); }}
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg flex items-center gap-1 hover:bg-orange-600 text-sm font-bold"
+                >
+                  <Plus size={16}/> 새 세트 등록
+                </button>
+              </div>
+
+              {/* 등록/수정 폼 */}
+              {(isAddingSimSet || editingSimSetId) && (
+                <div className="bg-white border-2 border-orange-100 rounded-2xl p-6 mb-6 space-y-4 shadow-md">
+                  <h3 className="font-bold text-lg">{editingSimSetId ? '세트 수정' : '새 세트 등록'}</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">타입 <span className="text-red-500">*</span></label>
+                      <select value={simSetForm.type}
+                        onChange={e => setSimSetForm(f => ({ ...f, type: e.target.value }))}
+                        className="p-2 border rounded w-full text-sm">
+                        <option value="fishing_vessel">어선용</option>
+                        <option value="leisure">레저용</option>
+                      </select>
                     </div>
-                    <input defaultValue={set.title} className="w-full font-bold text-lg mb-2 border-none p-0 focus:ring-0"/>
-                    <textarea defaultValue={set.description} className="w-full text-xs text-slate-400 border-none p-0 focus:ring-0 resize-none h-10"/>
-                    <div className="bg-slate-50 p-4 rounded-xl mt-4">
-                      <p className="text-[10px] font-black text-slate-400 mb-2">포함 장비 리스트</p>
-                      {set.items.map((item, i) => (
-                        <div key={i} className="flex justify-between items-center text-xs py-1">
-                          <span className="font-medium">• {item}</span>
-                        </div>
-                      ))}
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">세트명 <span className="text-red-500">*</span></label>
+                      <input type="text" placeholder="예: 프리미엄 어선 세트" value={simSetForm.name}
+                        onChange={e => setSimSetForm(f => ({ ...f, name: e.target.value }))}
+                        className="p-2 border rounded w-full text-sm"/>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">설명</label>
+                      <input type="text" placeholder="세트 설명" value={simSetForm.description}
+                        onChange={e => setSimSetForm(f => ({ ...f, description: e.target.value }))}
+                        className="p-2 border rounded w-full text-sm"/>
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <input type="checkbox" id="simActive" checked={simSetForm.isActive}
+                        onChange={e => setSimSetForm(f => ({ ...f, isActive: e.target.checked }))}
+                        className="w-4 h-4"/>
+                      <label htmlFor="simActive" className="text-sm font-medium">활성화 (공개 노출)</label>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* 장비 추가 */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-2 block">구성 장비 <span className="text-red-500">*</span></label>
+                    <div className="flex gap-2 mb-2">
+                      <input type="text" placeholder="장비명으로 검색..." value={simItemSearch}
+                        onChange={e => setSimItemSearch(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSimItemSearch()}
+                        className="flex-1 p-2 border rounded text-sm"/>
+                      <button onClick={handleSimItemSearch} disabled={simItemSearchLoading}
+                        className="bg-slate-700 text-white px-3 py-2 rounded text-sm flex items-center gap-1 disabled:opacity-50">
+                        {simItemSearchLoading ? <Loader2 size={14} className="animate-spin"/> : <Search size={14}/>} 검색
+                      </button>
+                    </div>
+                    {simItemSearchResults.length > 0 && (
+                      <div className="border rounded-lg overflow-hidden mb-2 max-h-40 overflow-y-auto">
+                        {simItemSearchResults.map(p => (
+                          <div key={p.id} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 border-b last:border-0">
+                            <span className="text-sm">{p.name}</span>
+                            <button onClick={() => addSimItem(p)}
+                              disabled={simSetItems.some(i => i.productId === p.id)}
+                              className="text-xs bg-orange-500 text-white px-2 py-1 rounded disabled:opacity-40 disabled:bg-slate-300">
+                              {simSetItems.some(i => i.productId === p.id) ? '추가됨' : '추가'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {simSetItems.length > 0 && (
+                      <div className="bg-slate-50 rounded-lg p-3 space-y-1">
+                        {simSetItems.map(item => (
+                          <div key={item.productId} className="flex items-center justify-between text-sm">
+                            <span className="font-medium">• {item.productName}</span>
+                            <button onClick={() => removeSimItem(item.productId)}
+                              className="text-red-400 hover:text-red-600"><X size={14}/></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {simSetItems.length === 0 && (
+                      <p className="text-xs text-slate-400 text-center py-3 border border-dashed rounded-lg">장비를 검색하여 추가하세요</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button onClick={handleSaveSimSet} disabled={simSetFormLoading || !simSetForm.name || simSetItems.length === 0}
+                      className="flex-1 bg-orange-500 text-white py-2 rounded-lg font-bold disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
+                      <Save size={15}/> {simSetFormLoading ? '저장 중...' : (editingSimSetId ? '수정 완료' : '세트 저장')}
+                    </button>
+                    <button onClick={resetSimSetForm} className="px-4 py-2 border rounded-lg text-sm text-slate-500 hover:bg-slate-50">
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 세트 목록 */}
+              {simSetsLoading ? (
+                <div className="p-8 text-center text-slate-400"><Loader2 className="animate-spin mx-auto mb-2" size={24}/> 불러오는 중...</div>
+              ) : simSets.length === 0 ? (
+                <div className="bg-white rounded-xl border border-dashed p-8 text-center text-slate-400">
+                  <Sparkles size={32} className="mx-auto mb-2 opacity-20"/>
+                  <p>등록된 시뮬레이터 세트가 없습니다.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {simSets.map(set => (
+                    <div key={set.id} className="bg-white rounded-xl border shadow-sm p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${set.type === 'fishing_vessel' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                              {set.type === 'fishing_vessel' ? '어선용' : '레저용'}
+                            </span>
+                            {!set.isActive && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">비활성</span>}
+                            <span className="font-bold text-base">{set.name}</span>
+                          </div>
+                          {set.description && <p className="text-xs text-slate-400 mb-2">{set.description}</p>}
+                          <div className="flex flex-wrap gap-1">
+                            {(set.items || []).map(item => (
+                              <span key={item.id} className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full">
+                                {products.find(p => p.id === item.productId)?.name ?? item.productId.slice(0, 8) + '...'}
+                              </span>
+                            ))}
+                            {(set.items || []).length === 0 && <span className="text-xs text-slate-300">장비 없음</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button onClick={() => startEditSimSet(set)}
+                            className="text-slate-400 hover:text-blue-600 p-1"><Edit size={16}/></button>
+                          <button onClick={() => handleDeleteSimSet(set.id, set.name)}
+                            className="text-slate-400 hover:text-red-500 p-1"><Trash2 size={16}/></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           </div>
         )}
