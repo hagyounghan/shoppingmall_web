@@ -24,6 +24,7 @@ export const API_ENDPOINTS = {
   PRODUCT_DETAIL: (id: string) => `/products/${id}`,
   PRODUCTS_BY_BRAND: (brandId: string) => `/products/brand/${brandId}`,
   PRODUCTS_BY_CATEGORY: (categoryId: string) => `/products/category/${categoryId}`,
+  PRODUCTS_BY_MAIN_CATEGORY: (categoryId: string) => `/products/main-category/${categoryId}`,
   TOP_PRODUCTS: '/products/top',
 
   // Categories

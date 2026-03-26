@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Product } from '../../types';
 import { CATEGORIES } from '../../constants/categories';
-import { getMainCategories, getProductsByCategory, getTopProducts } from '../../api/productApi';
+import { getMainCategories, getProductsByMainCategory, getTopProducts } from '../../api/productApi';
 
 export function CategoryPage() {
   const { categoryId: urlId } = useParams<{ categoryId: string }>();
@@ -30,7 +30,7 @@ export function CategoryPage() {
         setCategoryName(matched?.name ?? localCategory.name);
 
         const [categoryProducts, topProductsData] = await Promise.all([
-          getProductsByCategory(serverId),
+          getProductsByMainCategory(serverId),
           getTopProducts(5),
         ]);
 

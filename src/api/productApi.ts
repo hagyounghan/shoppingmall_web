@@ -32,8 +32,8 @@ export async function getProductDetail(id: string): Promise<ProductDetail> {
   return apiGet<ProductDetail>(API_ENDPOINTS.PRODUCT_DETAIL(id));
 }
 
-export async function getProductsByCategory(categoryId: string): Promise<Product[]> {
-  const data = await apiGet<unknown>(API_ENDPOINTS.PRODUCTS_BY_CATEGORY(categoryId));
+export async function getProductsByMainCategory(categoryId: string): Promise<Product[]> {
+  const data = await apiGet<unknown>(API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(categoryId));
   if (Array.isArray(data)) return data as Product[];
   if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as PaginatedProducts).data)) {
     return (data as PaginatedProducts).data;
