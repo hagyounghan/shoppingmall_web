@@ -702,7 +702,7 @@ export default function AdminDashboard() {
     setSimSetItems((set.items || []).map(item => ({
       productId: item.productId,
       categoryId: item.categoryId,
-      productName: products.find(p => p.id === item.productId)?.name ?? item.productId.slice(0, 8) + '...',
+      productName: item.productName ?? products.find(p => p.id === item.productId)?.name ?? '(이름 없음)',
     })));
     setIsAddingSimSet(false);
   };
@@ -1335,18 +1335,25 @@ export default function AdminDashboard() {
                             <span className="font-bold text-base">{set.name}</span>
                           </div>
                           {set.description && <p className="text-xs text-slate-400 mb-2">{set.description}</p>}
-                          <div className="flex flex-wrap gap-1">
-                            {(set.items || []).map(item => {
-                              const pName = products.find(p => p.id === item.productId)?.name;
-                              const cName = categories.find(c => c.id === item.categoryId)?.name;
-                              return (
-                                <span key={item.id} className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  {cName && <span className="text-blue-500 font-bold">[{cName}]</span>}
-                                  {pName ?? (productsLoading ? '...' : item.productId.slice(0, 8) + '...')}
-                                </span>
-                              );
-                            })}
-                            {(set.items || []).length === 0 && <span className="text-xs text-slate-300">장비 없음</span>}
+                          <div className="space-y-1 mt-1">
+                            {(set.items || []).length === 0
+                              ? <span className="text-xs text-slate-300">장비 없음</span>
+                              : Object.entries(
+                                  (set.items || []).reduce((acc, item) => {
+                                    const cName = categories.find(c => c.id === item.categoryId)?.name ?? item.categoryId.slice(0, 8);
+                                    if (!acc[cName]) acc[cName] = [];
+                                    acc[cName].push(item);
+                                    return acc;
+                                  }, {} as Record<string, typeof set.items>)
+                                ).map(([cName, items]) => (
+                                  <div key={cName} className="flex items-center gap-2 text-[11px]">
+                                    <span className="shrink-0 bg-blue-50 text-blue-600 font-bold px-1.5 py-0.5 rounded min-w-[70px] text-center">{cName}</span>
+                                    <span className="text-slate-700">
+                                      {items.map(i => i.productName ?? products.find(p => p.id === i.productId)?.name ?? '(이름 없음)').join(', ')}
+                                    </span>
+                                  </div>
+                                ))
+                            }
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0">

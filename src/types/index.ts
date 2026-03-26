@@ -361,6 +361,7 @@ export interface Faq {
 export interface SimulatorSetItemData {
   id: string;
   productId: string;
+  productName: string | null;
   categoryId: string;
 }
 
