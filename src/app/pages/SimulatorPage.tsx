@@ -4,8 +4,12 @@ import { formatPrice } from '../../utils/format';
 import { Product, EquipmentPosition, SelectedEquipment } from '../../types';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Search, X, Crown, TrendingUp, Wallet, Sparkles, Ship, Anchor } from 'lucide-react';
+import { Search, X, Crown, TrendingUp, Wallet, Sparkles, Ship, Anchor, Save, Loader2 } from 'lucide-react';
 import { BRANDS } from '../../constants/brands';
+import { apiGet, apiPost } from '../../lib/api-client';
+import { API_ENDPOINTS } from '../../config/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { PaginatedProducts } from '../../types';
 
 // 전자장비 위치 정의 (이미지 변경에 따라 x, y 좌표를 미세 조정하세요)
 const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
@@ -78,7 +82,16 @@ type BoatType = 'fishing' | 'leisure' | 'low';
 
 export function SimulatorPage() {
   const [searchParams] = useSearchParams();
+  const { isAuthenticated } = useAuth();
   const [boatType, setBoatType] = useState<BoatType>('leisure');
+
+  // API에서 로드한 실제 상품
+  const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [apiLoading, setApiLoading] = useState(false);
+
+  // 세트 저장
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<Record<string, SelectedEquipment>>(
     EQUIPMENT_POSITIONS.reduce((acc, pos) => {
       acc[pos.id] = { positionId: pos.id, product: null };
@@ -90,6 +103,15 @@ export function SimulatorPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
+  // API 상품 로드
+  useEffect(() => {
+    setApiLoading(true);
+    apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=100`)
+      .then(res => setApiProducts(res.data))
+      .catch(() => setApiProducts([]))
+      .finally(() => setApiLoading(false));
+  }, []);
 
   useEffect(() => {
     const setParam = searchParams.get('set');
@@ -158,12 +180,48 @@ export function SimulatorPage() {
     return equipmentTotal + (includeInstallation ? 300000 : 0);
   };
 
+  // 세트 저장 핸들러
+  const handleSaveSet = async () => {
+    if (!isAuthenticated) {
+      alert('로그인 후 세트를 저장할 수 있습니다.');
+      return;
+    }
+    const selectedList = Object.values(selectedEquipment).filter(eq => eq.product !== null);
+    if (selectedList.length === 0) {
+      alert('장비를 선택한 후 저장하세요.');
+      return;
+    }
+
+    const setName = `나의 세트 (${new Date().toLocaleDateString('ko-KR')})`;
+    const items = selectedList.map(eq => ({
+      productId: eq.product!.id,
+      categoryId: eq.product!.categoryId || eq.positionId,
+    }));
+
+    setSaveLoading(true);
+    try {
+      await apiPost(API_ENDPOINTS.SIMULATOR_SETS, {
+        name: setName,
+        description: `총 ${selectedList.length}개 장비, 견적 ${formatPrice(calculateTotal())}`,
+        items,
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch {
+      alert('세트 저장에 실패했습니다. 실제 등록된 상품으로 세트를 구성해야 저장됩니다.');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
   const filteredProducts = useMemo(() => {
-    let products = selectedPosition ? SAMPLE_PRODUCTS[selectedPosition.category] || [] : ALL_PRODUCTS;
+    let products = apiProducts.length > 0
+      ? (selectedPosition ? apiProducts : apiProducts)
+      : (selectedPosition ? SAMPLE_PRODUCTS[selectedPosition.category] || [] : ALL_PRODUCTS);
     if (selectedBrand !== 'all') products = products.filter(p => p.name.toUpperCase().includes(selectedBrand.toUpperCase()));
     if (searchQuery) products = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return products;
-  }, [selectedBrand, searchQuery, selectedPosition]);
+  }, [selectedBrand, searchQuery, selectedPosition, apiProducts]);
 
   const selectedProducts = Object.values(selectedEquipment)
     .filter((eq) => eq.product !== null)
@@ -333,6 +391,18 @@ export function SimulatorPage() {
                 <span className="text-lg font-semibold">총 견적</span>
                 <span className="text-2xl font-bold">{formatPrice(calculateTotal())}</span>
               </div>
+              {saveSuccess && (
+                <div className="text-xs text-green-300 text-center py-1">세트가 저장되었습니다!</div>
+              )}
+              <Button
+                className="w-full bg-white/10 text-white hover:bg-white/20 border border-white/20"
+                size="sm"
+                disabled={selectedProducts.length === 0 || saveLoading}
+                onClick={handleSaveSet}
+              >
+                {saveLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                {isAuthenticated ? '내 세트 저장' : '로그인 후 저장'}
+              </Button>
               <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" disabled={selectedProducts.length === 0}>
                 견적 문의하기
               </Button>

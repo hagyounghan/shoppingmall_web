@@ -13,18 +13,21 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { CheckCircle } from 'lucide-react';
 import {
   PaymentMethod,
+  PAYMENT_METHOD_LABELS,
   CreateOrderRequest,
   CreateGuestOrderRequest,
-  Order,
+  OrderResponse,
 } from '../../types';
+
+const PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'BANK_TRANSFER'];
 
 export function OrderPage() {
   const { user, isAuthenticated } = useAuth();
   const { items, clearCart, getTotalPrice } = useCart();
   const navigate = useNavigate();
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('카드');
-  const [shippingAddress, setShippingAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD');
+  const [note, setNote] = useState('');
 
   // 비로그인 폼
   const [guestName, setGuestName] = useState('');
@@ -95,24 +98,24 @@ export function OrderPage() {
         const body: CreateOrderRequest = {
           items: orderItems,
           paymentMethod,
-          shippingAddress: shippingAddress || undefined,
+          note: note || undefined,
         };
-        await apiPost<Order>(API_ENDPOINTS.ORDERS, body);
+        await apiPost<OrderResponse>(API_ENDPOINTS.ORDERS, body);
       } else {
-        if (!guestName || !guestEmail || !guestPhone) {
-          setError('이름, 이메일, 전화번호를 모두 입력해 주세요.');
+        if (!guestName || !guestEmail) {
+          setError('이름과 이메일을 입력해 주세요.');
           setLoading(false);
           return;
         }
         const body: CreateGuestOrderRequest = {
           items: orderItems,
           paymentMethod,
-          shippingAddress: shippingAddress || undefined,
+          note: note || undefined,
           guestName,
           guestEmail,
-          guestPhone,
+          guestPhone: guestPhone || undefined,
         };
-        await apiPost<Order>(API_ENDPOINTS.ORDERS_GUEST, body);
+        await apiPost<OrderResponse>(API_ENDPOINTS.ORDERS_GUEST, body);
       }
 
       await clearCart();
@@ -171,11 +174,10 @@ export function OrderPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="guest-phone">전화번호 <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="guest-phone">전화번호 (선택)</Label>
                     <Input
                       id="guest-phone"
                       type="tel"
-                      required
                       value={guestPhone}
                       onChange={(e) => setGuestPhone(e.target.value)}
                       placeholder="010-0000-0000"
@@ -198,17 +200,17 @@ export function OrderPage() {
                 </div>
               )}
 
-              {/* 배송지 */}
+              {/* 주문 메모 */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-border">
-                <h2 className="text-xl font-bold mb-4">배송 정보</h2>
+                <h2 className="text-xl font-bold mb-4">주문 메모 (선택)</h2>
                 <div>
-                  <Label htmlFor="shipping-address">배송 주소 (선택)</Label>
+                  <Label htmlFor="order-note">요청사항</Label>
                   <Input
-                    id="shipping-address"
+                    id="order-note"
                     type="text"
-                    value={shippingAddress}
-                    onChange={(e) => setShippingAddress(e.target.value)}
-                    placeholder="배송받을 주소를 입력하세요"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="배송 관련 요청사항을 입력하세요"
                     className="mt-1"
                     disabled={loading}
                   />
@@ -218,8 +220,8 @@ export function OrderPage() {
               {/* 결제 수단 */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-border">
                 <h2 className="text-xl font-bold mb-4">결제 수단</h2>
-                <div className="flex gap-4">
-                  {(['카드', '무통장입금'] as PaymentMethod[]).map((method) => (
+                <div className="flex gap-4 flex-wrap">
+                  {PAYMENT_METHODS.map((method) => (
                     <label key={method} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
@@ -230,7 +232,7 @@ export function OrderPage() {
                         disabled={loading}
                         className="accent-primary"
                       />
-                      <span className="font-medium">{method}</span>
+                      <span className="font-medium">{PAYMENT_METHOD_LABELS[method]}</span>
                     </label>
                   ))}
                 </div>

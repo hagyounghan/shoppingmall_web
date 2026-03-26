@@ -33,7 +33,7 @@ export interface ProductOption {
 export interface RelatedProduct {
   id: string;
   category: 'transducer' | 'heading-sensor' | 'antenna';
-  product: Product; 
+  product: Product;
   order: number;
 }
 
@@ -55,7 +55,7 @@ export interface Product {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  rank?: number; // UI에서 순위 표시용으로 사용 가능
+  rank?: number;
 }
 
 export interface ProductDetail extends Product {
@@ -83,7 +83,6 @@ export interface AuthResponse {
   token: string;
 }
 
-// AuthContext에서 사용하는 로그인 유저 타입 (token 포함)
 export interface AuthUser {
   id: string;
   email: string;
@@ -135,7 +134,6 @@ export interface WishlistItem {
   updatedAt: string;
 }
 
-// UI에서 사용하는 장바구니 아이템 (product join 포함)
 export interface CartItemUI {
   id: string;
   productId: string;
@@ -146,7 +144,6 @@ export interface CartItemUI {
   image: string;
 }
 
-// UI에서 사용하는 찜 목록 아이템 (product join 포함)
 export interface WishlistItemUI {
   id: string;
   productId: string;
@@ -165,25 +162,148 @@ export interface OrderItem {
   quantity: number;
 }
 
-export type PaymentMethod = '카드' | '무통장입금';
+// 서버 PaymentMethod enum과 일치
+export type PaymentMethod = 'CARD' | 'BANK_TRANSFER' | 'VIRTUAL_ACCOUNT' | 'KAKAO_PAY' | 'NAVER_PAY';
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CARD: '카드',
+  BANK_TRANSFER: '무통장입금',
+  VIRTUAL_ACCOUNT: '가상계좌',
+  KAKAO_PAY: '카카오페이',
+  NAVER_PAY: '네이버페이',
+};
+
+export type OrderStatus = 'PENDING' | 'PAID' | 'CANCELLED';
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDING: '결제대기',
+  PAID: '결제완료',
+  CANCELLED: '취소됨',
+};
 
 export interface CreateOrderRequest {
   items: OrderItem[];
   paymentMethod: PaymentMethod;
-  shippingAddress?: string;
+  note?: string;
 }
 
 export interface CreateGuestOrderRequest extends CreateOrderRequest {
   guestName: string;
   guestEmail: string;
-  guestPhone: string;
+  guestPhone?: string;
 }
 
-export interface Order {
+// 서버 OrderResponseDto와 일치
+export interface OrderResponse {
   id: string;
-  status: string;
-  totalPrice: number;
-  paymentMethod: PaymentMethod;
+  userId?: string;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  totalAmount: number;
+  status: OrderStatus;
+  note: string | null;
+  items: {
+    id: string;
+    productId: string;
+    optionId: string | null;
+    quantity: number;
+    unitPrice: number;
+  }[];
+  payment: {
+    id: string;
+    paymentMethod: string;
+    amount: number;
+    status: string;
+  };
   createdAt: string;
+  updatedAt: string;
 }
 
+// ==========================================
+// 7. 컨설팅 (Consulting)
+// ==========================================
+export type ConsultingStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export const CONSULTING_STATUS_LABELS: Record<ConsultingStatus, string> = {
+  PENDING: '대기중',
+  IN_PROGRESS: '진행중',
+  COMPLETED: '완료',
+  CANCELLED: '취소',
+};
+
+export interface ConsultingRequest {
+  id: string;
+  userId: string;
+  title: string;
+  content: string;
+  status: ConsultingStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
+// 8. 사용성 서비스 / A/S (UsabilityService)
+// ==========================================
+export type UsabilityServiceStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export const USABILITY_STATUS_LABELS: Record<UsabilityServiceStatus, string> = {
+  PENDING: '접수중',
+  IN_PROGRESS: '처리중',
+  COMPLETED: '완료',
+  CANCELLED: '취소',
+};
+
+export interface UsabilityServiceRequest {
+  id: string;
+  userId: string;
+  title: string;
+  content: string;
+  status: UsabilityServiceStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
+// 9. 시뮬레이터 (Simulator)
+// ==========================================
+export interface SimulatorSetItemData {
+  id: string;
+  productId: string;
+  categoryId: string;
+}
+
+export interface SimulatorSet {
+  id: string;
+  userId?: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  items: SimulatorSetItemData[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedSimulatorSets {
+  data: SimulatorSet[];
+  total: number;
+  page: number;
+  take: number;
+  totalPages: number;
+}
+
+// ==========================================
+// 10. 시뮬레이터 UI 전용 타입
+// ==========================================
+export interface EquipmentPosition {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  category: string;
+}
+
+export interface SelectedEquipment {
+  positionId: string;
+  product: Product | null;
+}

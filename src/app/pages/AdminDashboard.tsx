@@ -2,17 +2,23 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Package, MessageCircle, Megaphone,
   Plus, Edit, Trash2, Ship, User,
-  X, Image as ImageIcon, Layout, Settings, Sparkles, Save
+  X, Image as ImageIcon, Layout, Settings, Sparkles, Save,
+  ShoppingCart, ChevronDown
 } from 'lucide-react';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
-import { Product, Brand, Category, PaginatedProducts } from '../../types';
+import { Product, Brand, Category, PaginatedProducts, OrderResponse, ORDER_STATUS_LABELS, OrderStatus, PAYMENT_METHOD_LABELS } from '../../types';
+import { formatPrice } from '../../utils/format';
 
 // --- 타입 정의 ---
 interface Banner { id: number; title: string; subtitle: string; imageUrl: string; isActive: boolean; }
 interface RecommendedSet { id: string; title: string; description: string; totalPrice: number; items: string[]; }
-interface Consulting { id: number; customerName: string; phone: string; type: string; status: '상담대기' | '상담완료'; date: string; }
+interface Consulting { id: string; userId: string; title: string; content: string; status: string; createdAt: string; updatedAt: string; }
 interface BoardItem { id: number; category: string; title: string; author: string; date: string; }
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('ko-KR');
+}
 
 interface ProductForm {
   name: string;
@@ -65,6 +71,12 @@ export default function AdminDashboard() {
   const [consultings, setConsultings] = useState<Consulting[]>([]);
   const [consultingLoading, setConsultingLoading] = useState(false);
 
+  // 주문 관리
+  const [orders, setOrders] = useState<OrderResponse[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState('');
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+
   // 기타 목업
   const [banners] = useState(INITIAL_BANNERS);
   const [recSets] = useState(INITIAL_SETS);
@@ -97,17 +109,49 @@ export default function AdminDashboard() {
     if (currentMenu === 'consulting') {
       loadConsultings();
     }
+    if (currentMenu === 'orders') {
+      loadOrders();
+    }
   }, [currentMenu]);
 
-  // 컨설팅 로드 시도
+  // 주문 목록 로드 (관리자)
+  const loadOrders = async () => {
+    setOrdersLoading(true);
+    setOrdersError('');
+    try {
+      interface PaginatedOrders { data: OrderResponse[]; total: number; }
+      const res = await apiGet<PaginatedOrders | OrderResponse[]>(`${API_ENDPOINTS.ORDERS}?take=100`);
+      const data = Array.isArray(res) ? res : (res as PaginatedOrders).data;
+      setOrders(data);
+    } catch (err) {
+      setOrdersError(err instanceof Error ? err.message : '주문 목록을 불러오지 못했습니다.');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  // 주문 상태 변경
+  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    setStatusUpdating(orderId);
+    try {
+      await apiPatch(API_ENDPOINTS.ORDER_STATUS(orderId), { status });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '상태 변경에 실패했습니다.');
+    } finally {
+      setStatusUpdating(null);
+    }
+  };
+
+  // 컨설팅 로드 (관리자: 전체, 일반: 내 목록)
   const loadConsultings = async () => {
     setConsultingLoading(true);
     try {
-      // 전체 목록 엔드포인트 시도 (관리자 계정으로 접근 시 가능)
-      const res = await apiGet<Consulting[]>(API_ENDPOINTS.CONSULTING_ALL);
-      setConsultings(res);
+      interface PaginatedConsulting { data: Consulting[]; }
+      const res = await apiGet<PaginatedConsulting | Consulting[]>(API_ENDPOINTS.CONSULTING_ALL);
+      const data = Array.isArray(res) ? res : (res as PaginatedConsulting).data;
+      setConsultings(data);
     } catch {
-      // 실패 시 내 목록 시도
       try {
         const res = await apiGet<Consulting[]>(API_ENDPOINTS.CONSULTING_ME);
         setConsultings(res);
@@ -207,6 +251,7 @@ export default function AdminDashboard() {
         <nav className="flex-1 p-4 space-y-2">
           <MenuButton icon={<LayoutDashboard size={20}/>} label="운영 현황" isActive={currentMenu === 'dashboard'} onClick={() => setCurrentMenu('dashboard')} />
           <MenuButton icon={<Package size={20}/>} label="장비/상품 관리" isActive={currentMenu === 'products'} onClick={() => setCurrentMenu('products')} />
+          <MenuButton icon={<ShoppingCart size={20}/>} label="주문 관리" isActive={currentMenu === 'orders'} onClick={() => setCurrentMenu('orders')} />
           <MenuButton icon={<Layout size={20}/>} label="메인/추천 관리" isActive={currentMenu === 'main_mgmt'} onClick={() => setCurrentMenu('main_mgmt')} />
           <MenuButton icon={<MessageCircle size={20}/>} label="컨설팅 신청 내역" isActive={currentMenu === 'consulting'} onClick={() => setCurrentMenu('consulting')} />
           <MenuButton icon={<Megaphone size={20}/>} label="공지/자료실 관리" isActive={currentMenu === 'notices'} onClick={() => setCurrentMenu('notices')} />
@@ -222,8 +267,8 @@ export default function AdminDashboard() {
             <h2 className="text-2xl font-black">📊 실시간 운영 지표</h2>
             <div className="grid grid-cols-4 gap-6">
               <StatCard title="등록 장비" value={products.length || '-'} unit="종" color="text-blue-600" />
-              <StatCard title="상담 신청" value={consultings.filter(c=>c.status==='상담대기').length} unit="건" color="text-orange-500" />
-              <StatCard title="오늘 방문" value="—" unit="명" color="text-green-600" />
+              <StatCard title="전체 주문" value={orders.length} unit="건" color="text-purple-600" />
+              <StatCard title="상담 신청" value={consultings.filter(c=>c.status==='PENDING').length} unit="건" color="text-orange-500" />
               <StatCard title="자료실 게시글" value={boardItems.length} unit="개" color="text-slate-600" />
             </div>
           </div>
@@ -471,6 +516,86 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* [주문 관리] */}
+        {currentMenu === 'orders' && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-black">🛒 주문 관리</h2>
+
+            {ordersError && (
+              <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm">{ordersError}</div>
+            )}
+
+            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+              {ordersLoading ? (
+                <div className="p-8 text-center text-slate-400">불러오는 중...</div>
+              ) : orders.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">
+                  <p className="font-medium">주문 내역이 없거나 관리자 권한이 필요합니다.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 border-b text-sm font-bold">
+                    <tr>
+                      <th className="p-4 text-slate-500">주문번호</th>
+                      <th className="p-4 text-slate-500">주문자</th>
+                      <th className="p-4 text-slate-500">결제금액</th>
+                      <th className="p-4 text-slate-500">결제수단</th>
+                      <th className="p-4 text-center text-slate-500">상태</th>
+                      <th className="p-4 text-slate-500">주문일</th>
+                      <th className="p-4 text-center text-slate-500">상태변경</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map(order => (
+                      <tr key={order.id} className="border-b hover:bg-slate-50 transition text-sm">
+                        <td className="p-4 font-mono text-xs text-slate-400">{order.id.slice(0, 8)}...</td>
+                        <td className="p-4">
+                          {order.userId ? (
+                            <span className="text-blue-600 text-xs">회원</span>
+                          ) : (
+                            <span className="text-slate-500 text-xs">
+                              {order.guestName || '비회원'}
+                              {order.guestEmail && <span className="block text-slate-400">{order.guestEmail}</span>}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-4 font-black text-blue-600">{formatPrice(order.totalAmount)}</td>
+                        <td className="p-4 text-xs">
+                          {PAYMENT_METHOD_LABELS[order.payment?.paymentMethod as keyof typeof PAYMENT_METHOD_LABELS] || order.payment?.paymentMethod || '-'}
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                            order.status === 'PAID' ? 'bg-green-100 text-green-600' :
+                            order.status === 'CANCELLED' ? 'bg-red-100 text-red-500' :
+                            'bg-yellow-100 text-yellow-600'
+                          }`}>
+                            {ORDER_STATUS_LABELS[order.status] || order.status}
+                          </span>
+                        </td>
+                        <td className="p-4 text-xs text-slate-400">{formatDate(order.createdAt)}</td>
+                        <td className="p-4 text-center">
+                          <div className="relative inline-block">
+                            <select
+                              value={order.status}
+                              disabled={statusUpdating === order.id}
+                              onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
+                              className="text-xs border rounded px-2 py-1 bg-white pr-6 disabled:opacity-50"
+                            >
+                              <option value="PENDING">결제대기</option>
+                              <option value="PAID">결제완료</option>
+                              <option value="CANCELLED">취소</option>
+                            </select>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* [4. 컨설팅 신청 내역] */}
         {currentMenu === 'consulting' && (
           <div className="space-y-6">
@@ -488,23 +613,29 @@ export default function AdminDashboard() {
                   <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b text-sm">
                       <tr>
-                        <th className="p-4">고객명</th>
-                        <th className="p-4">연락처</th>
-                        <th className="p-4">유형</th>
+                        <th className="p-4">제목</th>
+                        <th className="p-4">사용자 ID</th>
                         <th className="p-4 text-center">상태</th>
+                        <th className="p-4">신청일</th>
                       </tr>
                     </thead>
                     <tbody>
                       {consultings.map(c => (
                         <tr key={c.id} className="border-b text-sm">
-                          <td className="p-4 font-bold"><User size={14} className="inline mr-2 text-slate-400"/>{c.customerName}</td>
-                          <td className="p-4 text-blue-600 font-medium">{c.phone}</td>
-                          <td className="p-4">{c.type}</td>
+                          <td className="p-4 font-bold"><User size={14} className="inline mr-2 text-slate-400"/>{c.title}</td>
+                          <td className="p-4 text-slate-500 font-mono text-xs">{c.userId?.slice(0, 8)}...</td>
                           <td className="p-4 text-center">
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${c.status === '상담완료' ? 'bg-slate-100 text-slate-400' : 'bg-orange-100 text-orange-600'}`}>
-                              {c.status}
+                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                              c.status === 'COMPLETED' ? 'bg-slate-100 text-slate-400' :
+                              c.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600' :
+                              'bg-orange-100 text-orange-600'
+                            }`}>
+                              {c.status === 'PENDING' ? '대기중' :
+                               c.status === 'IN_PROGRESS' ? '진행중' :
+                               c.status === 'COMPLETED' ? '완료' : c.status}
                             </span>
                           </td>
+                          <td className="p-4 text-xs text-slate-400">{formatDate(c.createdAt)}</td>
                         </tr>
                       ))}
                     </tbody>

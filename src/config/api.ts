@@ -26,12 +26,12 @@ export const API_ENDPOINTS = {
   PRODUCTS_BY_CATEGORY: (categoryId: string) => `/products/category/${categoryId}`,
   TOP_PRODUCTS: '/products/top',
 
+  // Categories
+  CATEGORIES: '/categories',
+
   // Cart
   CART: '/cart',
   CART_ITEM: (itemId: string) => `/cart/${itemId}`,
-
-  // Categories
-  CATEGORIES: '/categories',
 
   // Wishlist
   WISHLIST: '/wishlist',
@@ -42,9 +42,19 @@ export const API_ENDPOINTS = {
   ORDERS: '/orders',
   ORDERS_GUEST: '/orders/guest',
   ORDERS_ME: '/orders/me',
+  ORDER_GUEST_DETAIL: (orderId: string) => `/orders/guest/${orderId}`,
+  ORDER_STATUS: (id: string) => `/orders/${id}/status`,
 
-  // Consulting
+  // Consulting (인증 필요)
+  CONSULTING: '/consulting',
   CONSULTING_ME: '/consulting/me',
   CONSULTING_ALL: '/consulting',
-} as const;
 
+  // Usability Service / A/S (인증 필요)
+  USABILITY_SERVICES: '/usability-services',
+  USABILITY_SERVICES_ME: '/usability-services/me',
+
+  // Simulator (인증 필요)
+  SIMULATOR_SETS: '/simulator/sets',
+  SIMULATOR_SET: (id: string) => `/simulator/sets/${id}`,
+} as const;
