@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Star } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { ProductCard } from './ProductCard';
 import { FeaturedProduct } from '../../types';
 import { apiGet } from '../../lib/api-client';
@@ -16,18 +16,7 @@ export function FeaturedProductsSection() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return (
-      <section className="mb-12 bg-amber-50 border border-amber-200 rounded-lg py-8 px-6">
-        <div className="flex items-center justify-center py-8 text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          소개 장비 불러오는 중...
-        </div>
-      </section>
-    );
-  }
-
-  if (featured.length === 0) return null;
+  if (loading || featured.length === 0) return null;
 
   return (
     <section className="mb-12 bg-amber-50 border border-amber-200 rounded-lg py-8 px-6">
