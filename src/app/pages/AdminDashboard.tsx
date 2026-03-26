@@ -139,8 +139,11 @@ export default function AdminDashboard() {
 
   // 브랜드/카테고리 로드
   useEffect(() => {
-    apiGet<Brand[]>(API_ENDPOINTS.BRANDS).then(setBrands).catch(() => {});
-    apiGet<Category[]>(API_ENDPOINTS.CATEGORIES).then(setCategories).catch(() => {});
+    apiGet<Brand[]>(API_ENDPOINTS.BRANDS).then((res) => setBrands(Array.isArray(res) ? res : [])).catch(() => {});
+    apiGet<PaginatedResponse<Category> | Category[]>(API_ENDPOINTS.CATEGORIES).then((res) => {
+      if (Array.isArray(res)) setCategories(res);
+      else if (res && (res as PaginatedResponse<Category>).data) setCategories((res as PaginatedResponse<Category>).data);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
