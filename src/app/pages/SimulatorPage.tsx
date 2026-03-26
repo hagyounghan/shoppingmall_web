@@ -34,6 +34,11 @@ const CATEGORY_ID_TO_POSITION: Record<string, string> = {
   'f318d31f-797e-4cba-8088-70429352ca90': 'fishfinder',      // 해상용 안테나/헤딩센서
 };
 
+// EQUIPMENT_POSITIONS id → 서버 categoryId 역방향 매핑
+const POSITION_TO_CATEGORY_ID: Record<string, string> = Object.fromEntries(
+  Object.entries(CATEGORY_ID_TO_POSITION).map(([catId, posId]) => [posId, catId])
+);
+
 const PRESET_SET_KEYS = ['premium', 'value', 'budget'] as const;
 type PresetKey = typeof PRESET_SET_KEYS[number];
 
@@ -274,7 +279,12 @@ export function SimulatorPage() {
     .map(eq => eq.product!);
 
   const filteredProducts = useMemo(() => {
-    let products = apiProducts.length > 0 ? apiProducts : [];
+    let products = apiProducts;
+    // 선택된 위치의 카테고리로 필터링
+    if (selectedPosition) {
+      const categoryId = POSITION_TO_CATEGORY_ID[selectedPosition.id];
+      if (categoryId) products = products.filter(p => p.categoryId === categoryId);
+    }
     if (selectedBrand !== 'all') products = products.filter(p => p.name.toUpperCase().includes(selectedBrand.toUpperCase()));
     if (searchQuery) products = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return products;
