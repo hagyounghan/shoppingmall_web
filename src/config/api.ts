@@ -51,10 +51,12 @@ export const API_ENDPOINTS = {
   CONSULTING: '/consulting',
   CONSULTING_ME: '/consulting/me',
   CONSULTING_ALL: '/consulting',
+  CONSULTING_ITEM: (id: string) => `/consulting/${id}`,
 
   // Usability Service / A/S (인증 필요)
   USABILITY_SERVICES: '/usability-services',
   USABILITY_SERVICES_ME: '/usability-services/me',
+  USABILITY_SERVICE_ITEM: (id: string) => `/usability-services/${id}`,
 
   // Simulator (인증 필요)
   SIMULATOR_SETS: '/simulator/sets',
