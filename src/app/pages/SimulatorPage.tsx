@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { formatPrice } from '../../utils/format';
-import { Product, Category, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets } from '../../types';
+import { Product, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets, Category, PaginatedProducts } from '../../types';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -12,8 +12,6 @@ import { BRANDS } from '../../constants/brands';
 import { apiGet, apiPost, apiDelete } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { useCategories } from '../../contexts/CategoryContext';
-import { PaginatedProducts } from '../../types';
 
 // 장비 위치 정의 — id가 서버 category slug와 1:1 대응
 const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
@@ -30,10 +28,10 @@ const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
 const PRESET_SET_KEYS = ['premium', 'value', 'budget'] as const;
 type PresetKey = typeof PRESET_SET_KEYS[number];
 
-const PRESET_META: Record<PresetKey, { name: string; description: string; searchKeyword: string }> = {
-  premium: { name: '프리미엄 세트', description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트', searchKeyword: '프리미엄' },
-  value: { name: '가성비 세트', description: '합리적인 가격의 실용적인 세트', searchKeyword: '가성비' },
-  budget: { name: '가심비 세트', description: '경제적인 가격의 기본 세트', searchKeyword: '가심비' },
+const PRESET_META: Record<PresetKey, { name: string; description: string }> = {
+  premium: { name: '프리미엄 세트', description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트' },
+  value:   { name: '가성비 세트',   description: '합리적인 가격의 실용적인 세트' },
+  budget:  { name: '가심비 세트',   description: '경제적인 가격의 기본 세트' },
 };
 
 const MAX_SETS = 3;
@@ -45,17 +43,14 @@ function toApiType(boatType: 'fishing' | 'leisure'): SimulatorType {
 export function SimulatorPage() {
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
-  const { slugMap: mainSlugMap } = useCategories(); // CategoryContext: 메인 카테고리 (gps-plotter, radar 등)
+  // 메인+서브 카테고리 모두 포함한 slug 맵 (transducer 등 서브 카테고리 포함)
+  const [slugMap, setSlugMap] = useState<Record<string, Category>>({});
   const [boatType, setBoatType] = useState<'fishing' | 'leisure'>('leisure');
-  // 서브카테고리 전용 slugMap (transducer 등) — 메인 카테고리와 병합
-  const [subSlugMap, setSubSlugMap] = useState<Record<string, Category>>({});
-  const slugMap = useMemo<Record<string, Category>>(
-    () => ({ ...mainSlugMap, ...subSlugMap }),
-    [mainSlugMap, subSlugMap]
-  );
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [apiLoading, setApiLoading] = useState(false);
   const [presetApplying, setPresetApplying] = useState(false);
+  const [presetsLoaded, setPresetsLoaded] = useState(false);
+  const [pendingPreset, setPendingPreset] = useState<PresetKey | null>(null);
   const [presetSets, setPresetSets] = useState<Record<PresetKey, SimulatorSet | null>>({
     premium: null,
     value: null,
@@ -82,17 +77,16 @@ export function SimulatorPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
 
-  // 시뮬레이터 전용: 서브카테고리(transducer 등) 로드 — 메인 카테고리는 CategoryContext에서 가져옴
+  // 메인+서브 카테고리 전체 로드 (transducer 등 서브 카테고리 포함)
   useEffect(() => {
-    apiGet<{ data: Category[] } | Category[]>(`${API_ENDPOINTS.CATEGORIES}?take=30`)
+    apiGet<{ data: Category[] } | Category[]>(`${API_ENDPOINTS.CATEGORIES}?take=100`)
       .then(res => {
-        const list: Category[] = Array.isArray(res) ? res : (res as { data: Category[] })?.data ?? [];
-        // 서브카테고리만 추출 (parentId !== null)
+        const list: Category[] = Array.isArray(res) ? res : (res as { data: Category[] }).data ?? [];
         const map: Record<string, Category> = {};
-        list.filter(c => c.parentId !== null).forEach(c => { if (c.slug) map[c.slug] = c; });
-        setSubSlugMap(map);
+        list.forEach(c => { if (c.slug) map[c.slug] = c; });
+        setSlugMap(map);
       })
-      .catch(e => console.error('[Simulator] 서브카테고리 로드 실패:', e));
+      .catch(() => {});
   }, []);
 
   // 위치 선택 시 slug → categoryId 조회 후 상품 로드
@@ -103,34 +97,65 @@ export function SimulatorPage() {
     }
     const cat = slugMap[selectedPosition.id]; // position.id === slug → Category
     if (!cat) {
+      console.warn(
+        `[Simulator] ⚠ slug 매핑 실패\n` +
+        `  클릭한 위치: ${selectedPosition.name} (slug: "${selectedPosition.id}")\n` +
+        `  slugMap 키 목록: [${Object.keys(slugMap).join(', ')}]`
+      );
       setApiProducts([]);
       return;
     }
     setApiLoading(true);
     // 메인 카테고리(parentId=null) → /products/main-category/:id
     // 서브 카테고리(parentId≠null) → /products/category/:id
+    const catType = cat.parentId === null ? '메인' : '서브';
     const endpoint = cat.parentId === null
       ? API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(cat.id)
       : API_ENDPOINTS.PRODUCTS_BY_CATEGORY(cat.id);
+    console.log(
+      `[Simulator] 장비 클릭 → 상품 조회\n` +
+      `  위치: ${selectedPosition.name} (slug: "${selectedPosition.id}")\n` +
+      `  카테고리: ${cat.name} (id: ${cat.id}, 타입: ${catType}, parentId: ${cat.parentId ?? 'null'})\n` +
+      `  API: GET ${endpoint}`
+    );
     apiGet<PaginatedProducts>(endpoint)
-      .then(res => setApiProducts(Array.isArray(res) ? res : res?.data ?? []))
-      .catch(() => setApiProducts([]))
+      .then(res => {
+        const products = Array.isArray(res) ? res : res?.data ?? [];
+        console.log(
+          `[Simulator] 상품 조회 결과\n` +
+          `  위치: ${selectedPosition.name}\n` +
+          `  상품 수: ${products.length}개\n` +
+          `  상품 목록:`, products.map(p => `${p.name} (id: ${p.id})`)
+        );
+        setApiProducts(products);
+      })
+      .catch(err => {
+        console.error(
+          `[Simulator] 상품 조회 실패\n` +
+          `  위치: ${selectedPosition.name}\n` +
+          `  API: GET ${endpoint}\n` +
+          `  에러:`, err
+        );
+        setApiProducts([]);
+      })
       .finally(() => setApiLoading(false));
   }, [selectedPosition, slugMap]);
 
   // 프리셋 세트 (프리미엄/가성비/가심비) 서버에서 로드
   useEffect(() => {
     const apiType = toApiType(boatType);
+    setPresetsLoaded(false);
     apiGet<SimulatorSet[]>(API_ENDPOINTS.SIMULATOR_PRESETS(apiType))
       .then(sets => {
         const list: SimulatorSet[] = Array.isArray(sets) ? sets : [];
         setPresetSets({
-          premium: list.find(s => s.name.includes(PRESET_META.premium.searchKeyword)) ?? null,
-          value: list.find(s => s.name.includes(PRESET_META.value.searchKeyword)) ?? null,
-          budget: list.find(s => s.name.includes(PRESET_META.budget.searchKeyword)) ?? null,
+          premium: list.find(s => s.presetKey === 'premium') ?? null,
+          value:   list.find(s => s.presetKey === 'value')   ?? null,
+          budget:  list.find(s => s.presetKey === 'budget')  ?? null,
         });
       })
-      .catch(() => setPresetSets({ premium: null, value: null, budget: null }));
+      .catch(() => setPresetSets({ premium: null, value: null, budget: null }))
+      .finally(() => setPresetsLoaded(true));
   }, [boatType]);
 
   // 내 세트 로드 (로그인 시)
@@ -162,14 +187,36 @@ export function SimulatorPage() {
     loadSets();
   }, [isAuthenticated, user?.id]);
 
-  // URL set 파라미터로 프리셋 자동 적용
+  // URL set 파라미터 → pendingPreset에 저장 (즉시 적용 금지 — slugMap/presetSets 미로드 상태)
   useEffect(() => {
     const setParam = searchParams.get('set');
     if (setParam && PRESET_SET_KEYS.includes(setParam as PresetKey)) {
-      handleSetSelect(setParam as PresetKey);
+      setPendingPreset(setParam as PresetKey);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [searchParams]);
+
+  // pendingPreset: slugMap + presetSets 모두 준비된 후 적용
+  useEffect(() => {
+    if (!pendingPreset) return;
+    if (Object.keys(slugMap).length === 0) return; // slugMap 미로드
+    if (!presetsLoaded) return;                    // presetSets 미로드
+
+    const serverSet = presetSets[pendingPreset];
+    if (serverSet) {
+      applyServerSet(serverSet);
+    } else {
+      // 서버에 프리셋 없으면 장비 초기화만
+      const empty: Record<string, SelectedEquipment> = {};
+      EQUIPMENT_POSITIONS.forEach(pos => {
+        empty[pos.id] = { positionId: pos.id, product: null };
+      });
+      setSelectedEquipment(empty);
+    }
+    setPendingPreset(null);
+  // applyServerSet은 slugMap 클로저에 의존 — slugMap이 dep에 있으므로 항상 최신값 사용
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPreset, slugMap, presetsLoaded]);
 
   const currentTypeSets = mySets[toApiType(boatType)];
   const canSaveMore = currentTypeSets.length < MAX_SETS;

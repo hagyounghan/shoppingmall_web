@@ -220,9 +220,9 @@ export function Header() {
                                   {CATEGORIES.map((category) => {
                                     const CategoryIcon = category.icon;
                                     return (
-                                      <li key={category.id}>
+                                      <li key={category.slug}>
                                         <Link
-                                          to={category.link}
+                                          to={`/category/${category.slug}`}
                                           className="flex items-center gap-2 py-1 hover:text-primary transition-colors"
                                           onClick={() => setIsOpen(false)}
                                         >
@@ -289,9 +289,9 @@ export function Header() {
                         {CATEGORIES.map((category) => {
                           const CategoryIcon = category.icon;
                           return (
-                            <DropdownMenuItem key={category.id} asChild>
+                            <DropdownMenuItem key={category.slug} asChild>
                               <Link
-                                to={category.link}
+                                to={`/category/${category.slug}`}
                                 className="flex items-center gap-2 cursor-pointer"
                               >
                                 <CategoryIcon className="w-4 h-4" />

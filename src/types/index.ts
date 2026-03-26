@@ -275,12 +275,14 @@ export interface SimulatorSetItemData {
 }
 
 export type SimulatorType = 'fishing_vessel' | 'leisure';
+export type SimulatorPresetKey = 'premium' | 'value' | 'budget';
 
 export interface SimulatorSet {
   id: string;
   userId?: string;
   userName?: string;
   type: SimulatorType;
+  presetKey?: SimulatorPresetKey;
   name: string;
   description: string | null;
   isActive: boolean;
