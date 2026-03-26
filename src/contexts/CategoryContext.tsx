@@ -34,7 +34,7 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
         setSlugMap(map);
         setMainCategories(list.filter(c => c.parentId === null));
       })
-      .catch(() => {})
+      .catch((e) => console.error('[CategoryContext] 카테고리 로드 실패:', e))
       .finally(() => setLoading(false));
   }, []);
 

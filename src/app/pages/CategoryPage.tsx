@@ -11,20 +11,17 @@ import { PaginatedProducts } from '../../types';
 export function CategoryPage() {
   // URL 파라미터가 slug (예: 'gps-plotter')
   const { categoryId: slugParam } = useParams<{ categoryId: string }>();
-  const { getBySlug, loading: catLoading } = useCategories();
+  const { getBySlug, slugMap } = useCategories();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [topProducts, setTopProducts] = useState<(Product & { rank: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (catLoading || !slugParam) return;
+    if (!slugParam) return;
 
     const category = getBySlug(slugParam);
-    if (!category) {
-      setLoading(false);
-      return;
-    }
+    if (!category) return; // slugMap 아직 미로드 → 로드 완료 시 재실행
 
     const fetchData = async () => {
       try {
@@ -53,7 +50,7 @@ export function CategoryPage() {
     };
 
     fetchData();
-  }, [slugParam, catLoading]);
+  }, [slugParam, slugMap]); // slugMap이 채워지면 자동 재실행
 
   const category = slugParam ? getBySlug(slugParam) : undefined;
   const categoryName = category?.name ?? slugParam ?? '제품';
