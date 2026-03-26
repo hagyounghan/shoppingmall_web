@@ -165,7 +165,7 @@ export default function AdminDashboard() {
     if (currentMenu === 'lecture_mgmt') loadLectures();
     if (currentMenu === 'inquiry_mgmt') loadInquiries();
     if (currentMenu === 'faq_mgmt') loadFaqs();
-    if (currentMenu === 'main_mgmt') loadSimSets();
+    if (currentMenu === 'main_mgmt') { loadSimSets(); loadProducts(); }
   }, [currentMenu]);
 
   // 통계 로드
@@ -677,8 +677,17 @@ export default function AdminDashboard() {
   };
 
   const addSimItem = (product: Product) => {
-    if (simSetItems.some(i => i.productId === product.id)) return;
-    setSimSetItems(prev => [...prev, { productId: product.id, categoryId: product.categoryId, productName: product.name }]);
+    const newItem = { productId: product.id, categoryId: product.categoryId, productName: product.name };
+    setSimSetItems(prev => {
+      const existing = prev.findIndex(i => i.categoryId === product.categoryId);
+      if (existing !== -1) {
+        // 같은 카테고리 슬롯 → 교체
+        const next = [...prev];
+        next[existing] = newItem;
+        return next;
+      }
+      return [...prev, newItem];
+    });
     setSimItemSearch('');
     setSimItemSearchResults([]);
   };
@@ -1249,27 +1258,42 @@ export default function AdminDashboard() {
                     </div>
                     {simItemSearchResults.length > 0 && (
                       <div className="border rounded-lg overflow-hidden mb-2 max-h-40 overflow-y-auto">
-                        {simItemSearchResults.map(p => (
-                          <div key={p.id} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 border-b last:border-0">
-                            <span className="text-sm">{p.name}</span>
-                            <button onClick={() => addSimItem(p)}
-                              disabled={simSetItems.some(i => i.productId === p.id)}
-                              className="text-xs bg-orange-500 text-white px-2 py-1 rounded disabled:opacity-40 disabled:bg-slate-300">
-                              {simSetItems.some(i => i.productId === p.id) ? '추가됨' : '추가'}
-                            </button>
-                          </div>
-                        ))}
+                        {simItemSearchResults.map(p => {
+                          const isSame = simSetItems.some(i => i.productId === p.id);
+                          const sameCategory = !isSame && simSetItems.some(i => i.categoryId === p.categoryId);
+                          const catName = categories.find(c => c.id === p.categoryId)?.name;
+                          return (
+                            <div key={p.id} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 border-b last:border-0">
+                              <div>
+                                <span className="text-sm font-medium">{p.name}</span>
+                                {catName && <span className="ml-2 text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{catName}</span>}
+                                {sameCategory && <span className="ml-2 text-[10px] text-orange-500">→ 교체됨</span>}
+                              </div>
+                              <button onClick={() => addSimItem(p)}
+                                disabled={isSame}
+                                className="text-xs bg-orange-500 text-white px-2 py-1 rounded disabled:opacity-40 disabled:bg-slate-300 shrink-0">
+                                {isSame ? '추가됨' : sameCategory ? '교체' : '추가'}
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     {simSetItems.length > 0 && (
                       <div className="bg-slate-50 rounded-lg p-3 space-y-1">
-                        {simSetItems.map(item => (
-                          <div key={item.productId} className="flex items-center justify-between text-sm">
-                            <span className="font-medium">• {item.productName}</span>
-                            <button onClick={() => removeSimItem(item.productId)}
-                              className="text-red-400 hover:text-red-600"><X size={14}/></button>
-                          </div>
-                        ))}
+                        {simSetItems.map(item => {
+                          const catName = categories.find(c => c.id === item.categoryId)?.name;
+                          return (
+                            <div key={item.productId} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {catName && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">{catName}</span>}
+                                <span className="font-medium truncate">{item.productName}</span>
+                              </div>
+                              <button onClick={() => removeSimItem(item.productId)}
+                                className="text-red-400 hover:text-red-600 shrink-0 ml-2"><X size={14}/></button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     {simSetItems.length === 0 && (
@@ -1312,11 +1336,16 @@ export default function AdminDashboard() {
                           </div>
                           {set.description && <p className="text-xs text-slate-400 mb-2">{set.description}</p>}
                           <div className="flex flex-wrap gap-1">
-                            {(set.items || []).map(item => (
-                              <span key={item.id} className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full">
-                                {products.find(p => p.id === item.productId)?.name ?? item.productId.slice(0, 8) + '...'}
-                              </span>
-                            ))}
+                            {(set.items || []).map(item => {
+                              const pName = products.find(p => p.id === item.productId)?.name;
+                              const cName = categories.find(c => c.id === item.categoryId)?.name;
+                              return (
+                                <span key={item.id} className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  {cName && <span className="text-blue-500 font-bold">[{cName}]</span>}
+                                  {pName ?? (productsLoading ? '...' : item.productId.slice(0, 8) + '...')}
+                                </span>
+                              );
+                            })}
                             {(set.items || []).length === 0 && <span className="text-xs text-slate-300">장비 없음</span>}
                           </div>
                         </div>
