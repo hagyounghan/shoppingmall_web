@@ -137,7 +137,7 @@ export default function AdminDashboard() {
   const [isAddingSimSet, setIsAddingSimSet] = useState(false);
   const [editingSimSetId, setEditingSimSetId] = useState<string | null>(null);
   const [simSetForm, setSimSetForm] = useState({ type: 'fishing_vessel', name: '', description: '', isActive: true });
-  const [simSetItems, setSimSetItems] = useState<Array<{ productId: string; categoryId: string; productName: string }>>([]);
+  const [simSetItems, setSimSetItems] = useState<Array<{ productId: string; categoryId: string; productName: string; categoryName: string }>>([]);
   const [simSetFormLoading, setSimSetFormLoading] = useState(false);
   const [simItemSearch, setSimItemSearch] = useState('');
   const [simItemSearchResults, setSimItemSearchResults] = useState<Product[]>([]);
@@ -677,7 +677,8 @@ export default function AdminDashboard() {
   };
 
   const addSimItem = (product: Product) => {
-    const newItem = { productId: product.id, categoryId: product.categoryId, productName: product.name };
+    const categoryName = categories.find(c => c.id === product.categoryId)?.name ?? '';
+    const newItem = { productId: product.id, categoryId: product.categoryId, productName: product.name, categoryName };
     setSimSetItems(prev => {
       const existing = prev.findIndex(i => i.categoryId === product.categoryId);
       if (existing !== -1) {
@@ -703,6 +704,7 @@ export default function AdminDashboard() {
       productId: item.productId,
       categoryId: item.categoryId,
       productName: item.productName ?? products.find(p => p.id === item.productId)?.name ?? '(이름 없음)',
+      categoryName: item.categoryName ?? categories.find(c => c.id === item.categoryId)?.name ?? '',
     })));
     setIsAddingSimSet(false);
   };
@@ -1282,11 +1284,10 @@ export default function AdminDashboard() {
                     {simSetItems.length > 0 && (
                       <div className="bg-slate-50 rounded-lg p-3 space-y-1">
                         {simSetItems.map(item => {
-                          const catName = categories.find(c => c.id === item.categoryId)?.name;
                           return (
                             <div key={item.productId} className="flex items-center justify-between text-sm">
                               <div className="flex items-center gap-2 min-w-0">
-                                {catName && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">{catName}</span>}
+                                {item.categoryName && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">{item.categoryName}</span>}
                                 <span className="font-medium truncate">{item.productName}</span>
                               </div>
                               <button onClick={() => removeSimItem(item.productId)}
@@ -1340,7 +1341,7 @@ export default function AdminDashboard() {
                               ? <span className="text-xs text-slate-300">장비 없음</span>
                               : Object.entries(
                                   (set.items || []).reduce((acc, item) => {
-                                    const cName = categories.find(c => c.id === item.categoryId)?.name ?? item.categoryId.slice(0, 8);
+                                    const cName = item.categoryName ?? categories.find(c => c.id === item.categoryId)?.name ?? item.categoryId.slice(0, 8);
                                     if (!acc[cName]) acc[cName] = [];
                                     acc[cName].push(item);
                                     return acc;
@@ -1349,7 +1350,7 @@ export default function AdminDashboard() {
                                   <div key={cName} className="flex items-center gap-2 text-[11px]">
                                     <span className="shrink-0 bg-blue-50 text-blue-600 font-bold px-1.5 py-0.5 rounded min-w-[70px] text-center">{cName}</span>
                                     <span className="text-slate-700">
-                                      {items.map(i => i.productName ?? products.find(p => p.id === i.productId)?.name ?? '(이름 없음)').join(', ')}
+                                      {items.map(i => i.productName ?? '(이름 없음)').join(', ')}
                                     </span>
                                   </div>
                                 ))
