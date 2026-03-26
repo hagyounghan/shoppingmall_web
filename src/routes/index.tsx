@@ -17,7 +17,9 @@ import { LoginPage } from '../app/pages/LoginPage';
 import { CartPage } from '../app/pages/CartPage';
 import { WishlistPage } from '../app/pages/WishlistPage';
 import { SimulatorPage } from '../app/pages/SimulatorPage';
-import AdminDashboard from '../app/pages/AdminDashboard'; // 관리자 페이지 임포트
+import { OrderPage } from '../app/pages/OrderPage';
+import AdminDashboard from '../app/pages/AdminDashboard';
+import { AdminGuard } from '../app/components/AdminGuard';
 import { ROUTES } from '../constants/routes';
 
 export function AppRoutes() {
@@ -50,9 +52,10 @@ export function AppRoutes() {
       <Route path={ROUTES.CART} element={<CartPage />} />
       <Route path={ROUTES.WISHLIST} element={<WishlistPage />} />
       <Route path={ROUTES.SIMULATOR} element={<SimulatorPage />} />
+      <Route path={ROUTES.ORDER} element={<OrderPage />} />
 
-      {/* 🚀 관리자 대시보드 (신규 추가) */}
-      <Route path="/admin" element={<AdminDashboard />} />
+      {/* 관리자 대시보드 (로그인 필요) */}
+      <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
     </Routes>
   );
 }

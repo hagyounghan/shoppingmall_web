@@ -37,5 +37,14 @@ export const API_ENDPOINTS = {
   WISHLIST: '/wishlist',
   WISHLIST_ITEM: (itemId: string) => `/wishlist/${itemId}`,
   WISHLIST_PRODUCT: (productId: string) => `/wishlist/product/${productId}`,
+
+  // Orders
+  ORDERS: '/orders',
+  ORDERS_GUEST: '/orders/guest',
+  ORDERS_ME: '/orders/me',
+
+  // Consulting
+  CONSULTING_ME: '/consulting/me',
+  CONSULTING_ALL: '/consulting',
 } as const;
 

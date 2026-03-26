@@ -18,5 +18,6 @@ export const ROUTES = {
   LOGIN: '/login',
   CART: '/cart',
   WISHLIST: '/wishlist',
+  ORDER: '/order',
 } as const;
 

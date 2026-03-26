@@ -156,3 +156,34 @@ export interface WishlistItemUI {
   tag?: 'BEST' | 'NEW' | 'SALE' | null;
 }
 
+// ==========================================
+// 6. 주문 (Order)
+// ==========================================
+export interface OrderItem {
+  productId: string;
+  optionId?: string;
+  quantity: number;
+}
+
+export type PaymentMethod = '카드' | '무통장입금';
+
+export interface CreateOrderRequest {
+  items: OrderItem[];
+  paymentMethod: PaymentMethod;
+  shippingAddress?: string;
+}
+
+export interface CreateGuestOrderRequest extends CreateOrderRequest {
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+}
+
+export interface Order {
+  id: string;
+  status: string;
+  totalPrice: number;
+  paymentMethod: PaymentMethod;
+  createdAt: string;
+}
+

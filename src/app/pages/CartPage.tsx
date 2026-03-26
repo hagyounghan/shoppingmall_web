@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
 import { formatPrice } from '../../utils/format';
 import { Button } from '../components/ui/button';
@@ -9,6 +9,7 @@ import { useCart } from '../../contexts/CartContext';
 
 export function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCart();
+  const navigate = useNavigate();
   const totalPrice = getTotalPrice();
 
   if (items.length === 0) {
@@ -152,7 +153,7 @@ export function CartPage() {
               )}
 
               <div className="space-y-3">
-                <Button className="w-full" size="lg">
+                <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.ORDER)}>
                   주문하기
                 </Button>
                 <Link to={ROUTES.HOME}>
