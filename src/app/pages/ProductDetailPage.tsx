@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Minus, Plus, ShoppingCart, Heart, MessageCircle, HelpCircle } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Heart, MessageCircle, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useCart } from '../../contexts/CartContext';
 import { useWishlist } from '../../contexts/WishlistContext';
@@ -39,6 +39,7 @@ export function ProductDetailPage() {
   const [selectedTab, setSelectedTab] = useState('detail');
   const [selectedOption, setSelectedOption] = useState('');
   const [selectedRelatedProducts, setSelectedRelatedProducts] = useState<Record<string, string>>({});
+  const [thumbOffset, setThumbOffset] = useState(0);
 
   const { addItem } = useCart();
   const { isInWishlist, addItem: addToWishlist, removeByProductId } = useWishlist();
@@ -150,11 +151,10 @@ export function ProductDetailPage() {
     }
   };
 
-  const reviews = [
-    { id: 1, author: '김**', rating: 5, date: '2024.12.20', content: '제품 품질이 매우 우수합니다.' },
-    { id: 2, author: '이**', rating: 5, date: '2024.12.18', content: '전문 어선용으로 매우 만족스럽습니다.' },
-    { id: 3, author: '박**', rating: 4, date: '2024.12.15', content: '가격대비 성능이 좋습니다.' },
-  ];
+  const THUMB_COUNT = 3;
+  const canPrevThumb = thumbOffset > 0;
+  const canNextThumb = thumbOffset + THUMB_COUNT < images.length;
+  const visibleThumbs = images.slice(thumbOffset, thumbOffset + THUMB_COUNT);
 
   return (
     <div className="min-h-screen bg-white">
@@ -163,30 +163,87 @@ export function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
           {/* Image Gallery */}
           <div className="space-y-4">
-            <div className="aspect-square w-full bg-muted border border-border">
+            {/* 메인 이미지 */}
+            <div className="aspect-square w-full bg-muted border border-border relative">
               <ImageWithFallback
                 src={images[selectedImageIdx]}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
-            </div>
-            {images.length > 1 && (
-              <div className="grid grid-cols-3 gap-4">
-                {images.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setSelectedImageIdx(idx)}
-                    className={`aspect-square bg-muted border cursor-pointer transition-colors ${
-                      selectedImageIdx === idx ? 'border-primary' : 'border-border hover:border-primary'
-                    }`}
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => {
+                      const prev = selectedImageIdx - 1;
+                      if (prev < 0) return;
+                      setSelectedImageIdx(prev);
+                      if (prev < thumbOffset) setThumbOffset(Math.max(0, thumbOffset - 1));
+                    }}
+                    disabled={selectedImageIdx === 0}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center bg-white/80 hover:bg-white border border-border disabled:opacity-30 transition-colors"
                   >
-                    <ImageWithFallback
-                      src={img}
-                      alt={`${product.name} ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const next = selectedImageIdx + 1;
+                      if (next >= images.length) return;
+                      setSelectedImageIdx(next);
+                      if (next >= thumbOffset + THUMB_COUNT) setThumbOffset(thumbOffset + 1);
+                    }}
+                    disabled={selectedImageIdx === images.length - 1}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center bg-white/80 hover:bg-white border border-border disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs bg-black/50 text-white px-2 py-1 rounded-full">
+                    {selectedImageIdx + 1} / {images.length}
                   </div>
-                ))}
+                </>
+              )}
+            </div>
+
+            {/* 썸네일 (3개 + 슬라이드) */}
+            {images.length > 1 && (
+              <div className="flex items-center gap-2">
+                {images.length > THUMB_COUNT && (
+                  <button
+                    onClick={() => setThumbOffset(Math.max(0, thumbOffset - 1))}
+                    disabled={!canPrevThumb}
+                    className="w-8 h-8 flex-shrink-0 flex items-center justify-center border border-border hover:bg-secondary disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                )}
+                <div className="flex flex-1 gap-2">
+                  {visibleThumbs.map((img, i) => {
+                    const idx = thumbOffset + i;
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => setSelectedImageIdx(idx)}
+                        className={`flex-1 aspect-square bg-muted border cursor-pointer transition-colors ${
+                          selectedImageIdx === idx ? 'border-primary' : 'border-border hover:border-primary'
+                        }`}
+                      >
+                        <ImageWithFallback
+                          src={img}
+                          alt={`${product.name} ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                {images.length > THUMB_COUNT && (
+                  <button
+                    onClick={() => setThumbOffset(Math.min(images.length - THUMB_COUNT, thumbOffset + 1))}
+                    disabled={!canNextThumb}
+                    className="w-8 h-8 flex-shrink-0 flex items-center justify-center border border-border hover:bg-secondary disabled:opacity-30 transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -341,48 +398,29 @@ export function ProductDetailPage() {
 
           <div className="py-8">
             {selectedTab === 'detail' && (
-              <div className="space-y-6">
-                <h3 className="text-xl">제품 상세 정보</h3>
-                <div className="prose max-w-none">
-                  <p>{product.description}</p>
-                </div>
+              <div>
+                {product.htmlDescription ? (
+                  <div
+                    className="product-html-detail"
+                    dangerouslySetInnerHTML={{ __html: product.htmlDescription }}
+                  />
+                ) : (
+                  <p className="text-muted-foreground">{product.description}</p>
+                )}
               </div>
             )}
 
             {selectedTab === 'review' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl">상품 리뷰 ({reviews.length})</h3>
-                  <button className="px-6 py-2 border border-border hover:bg-secondary">
-                    리뷰 작성
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="border border-border p-6 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <span>{review.author}</span>
-                          <span className="text-yellow-500">{'★'.repeat(review.rating)}</span>
-                        </div>
-                        <span className="text-sm text-muted-foreground">{review.date}</span>
-                      </div>
-                      <p>{review.content}</p>
-                    </div>
-                  ))}
-                </div>
+              <div className="py-16 text-center text-muted-foreground">
+                <p className="text-lg mb-2">상품 리뷰 기능은 준비 중입니다.</p>
+                <p className="text-sm">서버 연동 후 이용하실 수 있습니다.</p>
               </div>
             )}
 
             {selectedTab === 'qna' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl">상품 문의</h3>
-                  <button className="px-6 py-2 border border-border hover:bg-secondary">
-                    문의하기
-                  </button>
-                </div>
-                <p className="text-muted-foreground">등록된 문의가 없습니다.</p>
+              <div className="py-16 text-center text-muted-foreground">
+                <p className="text-lg mb-2">상품 문의 기능은 준비 중입니다.</p>
+                <p className="text-sm">서버 연동 후 이용하실 수 있습니다.</p>
               </div>
             )}
 

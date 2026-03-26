@@ -1,3 +1,23 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+
+/* 상품 상세 HTML 렌더링 */
+.product-html-detail img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem auto;
+}
+.product-html-detail h1,
+.product-html-detail h2,
+.product-html-detail h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
+}
+.product-html-detail p {
+  margin: 0.75rem 0;
+  line-height: 1.75;
+  color: #444;
+}
