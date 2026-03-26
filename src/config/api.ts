@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
 
   // Categories
   CATEGORIES: '/categories',
+  CATEGORIES_MAIN: '/categories/main',
 
   // Cart
   CART: '/cart',

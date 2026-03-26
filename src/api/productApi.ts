@@ -36,3 +36,8 @@ export async function getCategories(): Promise<Category[]> {
   const data = await apiGet<Category[] | { data: Category[] }>(API_ENDPOINTS.CATEGORIES);
   return Array.isArray(data) ? data : data.data || [];
 }
+
+export async function getMainCategories(): Promise<Category[]> {
+  const data = await apiGet<Category[] | { data: Category[] }>(API_ENDPOINTS.CATEGORIES_MAIN);
+  return Array.isArray(data) ? data : data.data || [];
+}

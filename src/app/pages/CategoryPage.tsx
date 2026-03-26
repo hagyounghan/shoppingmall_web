@@ -1,60 +1,50 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
-import { CATEGORIES } from '../../constants/categories';
-import { Product } from '../../types'; 
-import { getCategories, getProducts, getTopProducts } from '../../api/productApi';
+import { Product } from '../../types';
+import { getMainCategories, getProducts, getTopProducts } from '../../api/productApi';
 
 export function CategoryPage() {
-  const { categoryId: categorySlug } = useParams(); 
-  
+  const { categoryId } = useParams<{ categoryId: string }>();
+
+  const [categoryName, setCategoryName] = useState('제품');
   const [products, setProducts] = useState<Product[]>([]);
   const [topProducts, setTopProducts] = useState<(Product & { rank: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const categoryInfo = CATEGORIES.find(cat => cat.link === `/category/${categorySlug}`);
-  const categoryName = categoryInfo?.label || '제품';
-
   useEffect(() => {
+    if (!categoryId) return;
+
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // 1. 서버 카테고리 목록 가져오기
-        const allCategories = await getCategories();
 
-        // 2. 현재 페이지의 Slug와 서버의 카테고리 매칭
-        const realCategory = allCategories.find((c: any) =>
-          c.name.includes(categoryName) || categoryName.includes(c.name)
-        );
-
-        const realId = realCategory ? realCategory.id : undefined;
-
-        // 3. 병렬 데이터 로드
-        const [productsResponse, topProductsData] = await Promise.all([
-          getProducts({ categoryId: realId }),
-          getTopProducts(5)
+        // 카테고리 이름 조회 (병렬)
+        const [allCategories, productsResponse, topProductsData] = await Promise.all([
+          getMainCategories(),
+          getProducts({ categoryId }),
+          getTopProducts(5),
         ]);
 
-        // 🟢 데이터 설정 (응답 구조에 맞춰 안전하게 처리)
+        const matched = allCategories.find((c) => c.id === categoryId);
+        if (matched) setCategoryName(matched.name);
+
         setProducts(productsResponse.data || []);
-        
-        // topProductsData가 배열인지 최종 확인 후 rank 부여
+
         if (Array.isArray(topProductsData)) {
           setTopProducts(topProductsData.map((p, i) => ({ ...p, rank: i + 1 })));
         } else {
           setTopProducts([]);
         }
-
       } catch (error) {
-        console.error("데이터 로드 실패:", error);
+        console.error('데이터 로드 실패:', error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [categorySlug, categoryName]);
+  }, [categoryId]);
 
   return (
     <div className="min-h-screen bg-white">
