@@ -95,15 +95,14 @@ export interface AuthUser {
 // ==========================================
 // 4. 카테고리 및 브랜드 (Category & Brand)
 // ==========================================
+// 서버 응답 Category (GET /categories/main, GET /categories/:id)
 export interface Category {
   id: string;
   name: string;
-  label: string;
-  icon: string;
-  link: string;
-  description: string;
-  order: number;
+  description: string | null;
   isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Brand {

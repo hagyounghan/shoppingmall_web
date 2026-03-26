@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, ShoppingCart, Heart, Menu, ChevronDown, LogOut } from 'lucide-react';
 import { ROUTES } from '../../constants/routes';
-import { getCategoryIcon, getCategoryLink } from '../../constants/categories';
+import { CATEGORIES } from '../../constants/categories';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
-import { getMainCategories } from '../../api/productApi';
-import { Category } from '../../types';
 import {
   Sheet,
   SheetContent,
@@ -53,16 +51,9 @@ const navigationItems: NavigationItem[] = [
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
   const { isAuthenticated, user, logout } = useAuth();
   const { getTotalItems } = useCart();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    getMainCategories()
-      .then(setCategories)
-      .catch(() => setCategories([]));
-  }, []);
 
   const handleLogout = () => {
     logout();
@@ -226,17 +217,17 @@ export function Header() {
                               <div className="py-2">
                                 <span className="text-lg font-semibold">제품</span>
                                 <ul className="mt-2 ml-4 flex flex-col gap-2">
-                                  {categories.map((category) => {
-                                    const CategoryIcon = getCategoryIcon(category.name);
+                                  {CATEGORIES.map((category) => {
+                                    const CategoryIcon = category.icon;
                                     return (
-                                      <li key={category.id}>
+                                      <li key={category.slug}>
                                         <Link
-                                          to={getCategoryLink(category.id)}
+                                          to={category.link}
                                           className="flex items-center gap-2 py-1 hover:text-primary transition-colors"
                                           onClick={() => setIsOpen(false)}
                                         >
                                           <CategoryIcon className="w-4 h-4" />
-                                          <span>{category.name}</span>
+                                          <span>{category.label}</span>
                                         </Link>
                                       </li>
                                     );
@@ -295,16 +286,16 @@ export function Header() {
                         <ChevronDown className="w-4 h-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="center" className="w-48">
-                        {categories.map((category) => {
-                          const CategoryIcon = getCategoryIcon(category.name);
+                        {CATEGORIES.map((category) => {
+                          const CategoryIcon = category.icon;
                           return (
-                            <DropdownMenuItem key={category.id} asChild>
+                            <DropdownMenuItem key={category.slug} asChild>
                               <Link
-                                to={getCategoryLink(category.id)}
+                                to={category.link}
                                 className="flex items-center gap-2 cursor-pointer"
                               >
                                 <CategoryIcon className="w-4 h-4" />
-                                <span>{category.name}</span>
+                                <span>{category.label}</span>
                               </Link>
                             </DropdownMenuItem>
                           );

@@ -1,25 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ProductCard } from "../components/ProductCard";
-import { getCategoryIcon, getCategoryLink } from "../../constants/categories";
+import { CATEGORIES } from "../../constants/categories";
 import { ROUTES } from "../../constants/routes";
-import { Product, Category } from "../../types";
+import { Product } from "../../types";
 import { Crown, TrendingUp, Wallet, ArrowRight } from "lucide-react";
 import { formatPrice } from "../../utils/format";
-import { getTopProducts, getMainCategories } from "../../api/productApi";
+import { getTopProducts } from "../../api/productApi";
 
 export function MainPage() {
   const navigate = useNavigate();
   const [bestProducts, setBestProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     getTopProducts(5)
       .then((products) => setBestProducts(products))
       .catch(() => setBestProducts([]));
-    getMainCategories()
-      .then(setCategories)
-      .catch(() => setCategories([]));
   }, []);
 
   const handleSetClick = (setId: 'premium' | 'value' | 'budget') => {
@@ -53,23 +49,20 @@ export function MainPage() {
       <section className="py-16 bg-secondary">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
-            {categories.map((category) => {
-              const CategoryIcon = getCategoryIcon(category.name);
-              return (
-                <Link
-                  key={category.id}
-                  to={getCategoryLink(category.id)}
-                  className="flex flex-col items-center gap-3 p-4 bg-white border border-border hover:border-primary transition-colors group"
-                >
-                  <div className="w-12 h-12 flex items-center justify-center bg-secondary group-hover:bg-primary group-hover:text-white transition-colors">
-                    <CategoryIcon className="w-6 h-6" />
-                  </div>
-                  <span className="text-sm text-center">
-                    {category.name}
-                  </span>
-                </Link>
-              );
-            })}
+            {CATEGORIES.map((category) => (
+              <Link
+                key={category.slug}
+                to={category.link}
+                className="flex flex-col items-center gap-3 p-4 bg-white border border-border hover:border-primary transition-colors group"
+              >
+                <div className="w-12 h-12 flex items-center justify-center bg-secondary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <category.icon className="w-6 h-6" />
+                </div>
+                <span className="text-sm text-center">
+                  {category.label}
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
