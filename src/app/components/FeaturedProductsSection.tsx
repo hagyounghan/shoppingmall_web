@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Star } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { ProductCard } from './ProductCard';
 import { FeaturedProduct } from '../../types';
 import { apiGet } from '../../lib/api-client';
@@ -17,12 +17,8 @@ export function FeaturedProductsSection() {
   }, []);
 
   return (
-    <section className="mb-12 bg-amber-50 border border-amber-200 rounded-lg py-8 px-6">
-      <div className="flex items-center justify-center gap-2 mb-8">
-        <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-        <h2 className="text-2xl font-bold text-amber-900">명장 추천 소개 장비</h2>
-        <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-      </div>
+    <section className="mb-12 bg-secondary border border-border rounded-lg py-8 px-6">
+      <h2 className="text-2xl font-bold mb-8 text-center">명장픽 장비</h2>
 
       {loading ? (
         <div className="flex items-center justify-center py-8 text-muted-foreground">
@@ -30,8 +26,8 @@ export function FeaturedProductsSection() {
           불러오는 중...
         </div>
       ) : featured.length === 0 ? (
-        <div className="py-8 text-center text-amber-700/60 border-2 border-dashed border-amber-200 rounded-lg">
-          소개 장비가 아직 등록되지 않았습니다.
+        <div className="py-8 text-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
+          명장픽 장비가 아직 등록되지 않았습니다.
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
