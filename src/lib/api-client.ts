@@ -34,6 +34,9 @@ async function apiRequest<T>(
   const { timeout = API_CONFIG.timeout, ...fetchOptions } = options;
 
   const url = `${API_CONFIG.baseURL}${endpoint}`;
+  const method = (fetchOptions.method ?? 'GET').toUpperCase();
+
+  console.log(`[API] ▶ ${method} ${url}`);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -41,7 +44,7 @@ async function apiRequest<T>(
   try {
     // 토큰 가져오기
     const token = localStorage.getItem('auth_token');
-    
+
     const response = await fetch(url, {
       ...fetchOptions,
       signal: controller.signal,
@@ -59,6 +62,8 @@ async function apiRequest<T>(
         message: response.statusText,
       }));
 
+      console.error(`[API] ✗ ${method} ${url} → ${response.status} ${response.statusText}`, errorData);
+
       throw new ApiClientError(
         errorData.message || `HTTP Error: ${response.status}`,
         response.status,
@@ -68,17 +73,24 @@ async function apiRequest<T>(
 
     // 204 No Content 등의 경우 빈 응답 처리
     if (response.status === 204) {
+      console.log(`[API] ✓ ${method} ${url} → 204 No Content`);
       return undefined as T;
     }
 
     const json = await response.json();
 
     // 서버 공통 응답 래퍼 { success, data, timestamp } 자동 언래핑
-    if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
-      return json.data as T;
-    }
+    const result = (json && typeof json === 'object' && 'success' in json && 'data' in json)
+      ? json.data as T
+      : json as T;
 
-    return json as T;
+    const count = Array.isArray(result) ? ` (${result.length}건)` :
+      (result && typeof result === 'object' && 'data' in (result as object) && Array.isArray((result as {data: unknown}).data))
+        ? ` (${(result as {data: unknown[]}).data.length}건)`
+        : '';
+    console.log(`[API] ✓ ${method} ${url} → ${response.status}${count}`);
+
+    return result;
   } catch (error) {
     clearTimeout(timeoutId);
 
@@ -88,8 +100,10 @@ async function apiRequest<T>(
 
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
+        console.error(`[API] ✗ ${method} ${url} → TIMEOUT`);
         throw new ApiClientError('Request timeout', 408, 'Request Timeout');
       }
+      console.error(`[API] ✗ ${method} ${url} → Network Error:`, error.message);
       throw new ApiClientError(error.message, 0, 'Network Error');
     }
 

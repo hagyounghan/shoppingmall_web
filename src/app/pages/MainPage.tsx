@@ -51,8 +51,8 @@ export function MainPage() {
           <div className="grid grid-cols-4 md:grid-cols-9 gap-4">
             {CATEGORIES.map((category) => (
               <Link
-                key={category.id}
-                to={category.link}
+                key={category.slug}
+                to={`/category/${category.slug}`}
                 className="flex flex-col items-center gap-3 p-4 bg-white border border-border hover:border-primary transition-colors group"
               >
                 <div className="w-12 h-12 flex items-center justify-center bg-secondary group-hover:bg-primary group-hover:text-white transition-colors">

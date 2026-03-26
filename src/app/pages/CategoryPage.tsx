@@ -2,45 +2,49 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Product } from '../../types';
-import { CATEGORIES } from '../../constants/categories';
-import { getMainCategories, getProductsByMainCategory, getTopProducts } from '../../api/productApi';
+import { useCategories } from '../../contexts/CategoryContext';
+import { getProductsByMainCategory, getTopProducts } from '../../api/productApi';
+import { apiGet } from '../../lib/api-client';
+import { API_ENDPOINTS } from '../../config/api';
+import { PaginatedProducts } from '../../types';
 
 export function CategoryPage() {
-  const { categoryId: urlId } = useParams<{ categoryId: string }>();
-
-  const localCategory = CATEGORIES.find((c) => c.id === urlId);
-  const [categoryName, setCategoryName] = useState(localCategory?.name || '제품');
+  // URL 파라미터가 slug (예: 'gps-plotter')
+  const { categoryId: slugParam } = useParams<{ categoryId: string }>();
+  const { getBySlug, loading: catLoading } = useCategories();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [topProducts, setTopProducts] = useState<(Product & { rank: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!localCategory) return;
+    if (catLoading || !slugParam) return;
+
+    const category = getBySlug(slugParam);
+    if (!category) {
+      setLoading(false);
+      return;
+    }
 
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // 서버 카테고리 목록 조회 → 이름으로 ID 추출
-        const serverCategories = await getMainCategories();
-        const matched = serverCategories.find((c) => c.name === localCategory.name);
-        const serverId = matched?.id ?? urlId!;
-
-        setCategoryName(matched?.name ?? localCategory.name);
+        // 메인 카테고리(parentId=null) → /products/main-category/:id
+        // 서브 카테고리(parentId≠null) → /products/category/:id
+        const endpoint = category.parentId === null
+          ? API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(category.id)
+          : API_ENDPOINTS.PRODUCTS_BY_CATEGORY(category.id);
 
         const [categoryProducts, topProductsData] = await Promise.all([
-          getProductsByMainCategory(serverId),
+          apiGet<PaginatedProducts>(endpoint).then(res => Array.isArray(res) ? res : res?.data ?? []),
           getTopProducts(5),
         ]);
 
         setProducts(categoryProducts);
-
-        if (Array.isArray(topProductsData)) {
-          setTopProducts(topProductsData.map((p, i) => ({ ...p, rank: i + 1 })));
-        } else {
-          setTopProducts([]);
-        }
+        setTopProducts(Array.isArray(topProductsData)
+          ? topProductsData.map((p, i) => ({ ...p, rank: i + 1 }))
+          : []);
       } catch (error) {
         console.error('데이터 로드 실패:', error);
       } finally {
@@ -49,7 +53,10 @@ export function CategoryPage() {
     };
 
     fetchData();
-  }, [urlId]);
+  }, [slugParam, catLoading]);
+
+  const category = slugParam ? getBySlug(slugParam) : undefined;
+  const categoryName = category?.name ?? slugParam ?? '제품';
 
   return (
     <div className="min-h-screen bg-white">

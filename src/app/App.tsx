@@ -5,6 +5,7 @@ import { AppRoutes } from '../routes';
 import { AuthProvider } from '../contexts/AuthContext';
 import { CartProvider } from '../contexts/CartContext';
 import { WishlistProvider } from '../contexts/WishlistContext';
+import { CategoryProvider } from '../contexts/CategoryContext';
 
 // 레이아웃을 결정하는 내부 컴포넌트
 function AppContent() {
@@ -40,11 +41,13 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <CartProvider>
-          <WishlistProvider>
-            <AppContent />
-          </WishlistProvider>
-        </CartProvider>
+        <CategoryProvider>
+          <CartProvider>
+            <WishlistProvider>
+              <AppContent />
+            </WishlistProvider>
+          </CartProvider>
+        </CategoryProvider>
       </AuthProvider>
     </BrowserRouter>
   );

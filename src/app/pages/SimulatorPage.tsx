@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { formatPrice } from '../../utils/format';
-import { Product, Category, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets } from '../../types';
+import { Product, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets } from '../../types';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -12,6 +12,7 @@ import { BRANDS } from '../../constants/brands';
 import { apiGet, apiPost, apiDelete } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCategories } from '../../contexts/CategoryContext';
 import { PaginatedProducts } from '../../types';
 
 // 장비 위치 정의 — id가 서버 category slug와 1:1 대응
@@ -24,8 +25,6 @@ const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
   { id: 'autopilot',      name: '자동조타',    x: 60, y: 60, category: 'Autopilot' },
 ];
 
-// slug → { id, parentId } — 서버에서 로드 후 채워짐
-type SlugMap = Record<string, Pick<Category, 'id' | 'parentId'>>;
 
 
 const PRESET_SET_KEYS = ['premium', 'value', 'budget'] as const;
@@ -46,9 +45,8 @@ function toApiType(boatType: 'fishing' | 'leisure'): SimulatorType {
 export function SimulatorPage() {
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
+  const { slugMap } = useCategories();
   const [boatType, setBoatType] = useState<'fishing' | 'leisure'>('leisure');
-
-  const [slugMap, setSlugMap] = useState<SlugMap>({});
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]); // 프리셋 적용용 전체 캐시
   const [apiLoading, setApiLoading] = useState(false);
@@ -78,20 +76,6 @@ export function SimulatorPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
 
-  // 카테고리 slug 맵 로드 (1회) — UUID 하드코딩 제거
-  useEffect(() => {
-    apiGet<{ data: Category[] }>(`${API_ENDPOINTS.CATEGORIES}?take=200`)
-      .then(res => {
-        const list: Category[] = Array.isArray(res) ? res : res?.data ?? [];
-        const map: SlugMap = {};
-        list.forEach(c => {
-          if (c.slug) map[c.slug] = { id: c.id, parentId: c.parentId };
-        });
-        setSlugMap(map);
-      })
-      .catch(() => {});
-  }, []);
-
   // 프리셋 적용용 전체 상품 로드 (1회)
   useEffect(() => {
     apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=200`)
@@ -105,7 +89,7 @@ export function SimulatorPage() {
       setApiProducts([]);
       return;
     }
-    const cat = slugMap[selectedPosition.id]; // position.id === slug
+    const cat = slugMap[selectedPosition.id]; // position.id === slug → Category
     if (!cat) {
       setApiProducts([]);
       return;
@@ -206,7 +190,7 @@ export function SimulatorPage() {
   };
 
   const applyServerSet = (set: SimulatorSet) => {
-    // categoryId → slug 역방향 맵 (slugMap에서 생성)
+    // categoryId → slug 역방향 맵 (CategoryContext slugMap에서 생성)
     const idToSlug: Record<string, string> = {};
     Object.entries(slugMap).forEach(([slug, cat]) => { idToSlug[cat.id] = slug; });
 
