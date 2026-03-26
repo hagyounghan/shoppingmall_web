@@ -19,5 +19,7 @@ export const ROUTES = {
   CART: '/cart',
   WISHLIST: '/wishlist',
   ORDER: '/order',
+  SERVICE_REQUEST: '/service',
+  CONSULTING_BOOKING: '/consulting-booking',
 } as const;
 

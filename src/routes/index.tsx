@@ -18,6 +18,8 @@ import { CartPage } from '../app/pages/CartPage';
 import { WishlistPage } from '../app/pages/WishlistPage';
 import { SimulatorPage } from '../app/pages/SimulatorPage';
 import { OrderPage } from '../app/pages/OrderPage';
+import { ServiceRequestPage } from '../app/pages/ServiceRequestPage';
+import { ConsultingPage } from '../app/pages/ConsultingPage';
 import AdminDashboard from '../app/pages/AdminDashboard';
 import { AdminGuard } from '../app/components/AdminGuard';
 import { ROUTES } from '../constants/routes';
@@ -53,6 +55,8 @@ export function AppRoutes() {
       <Route path={ROUTES.WISHLIST} element={<WishlistPage />} />
       <Route path={ROUTES.SIMULATOR} element={<SimulatorPage />} />
       <Route path={ROUTES.ORDER} element={<OrderPage />} />
+      <Route path={ROUTES.SERVICE_REQUEST} element={<ServiceRequestPage />} />
+      <Route path={ROUTES.CONSULTING_BOOKING} element={<ConsultingPage />} />
 
       {/* 관리자 대시보드 (로그인 필요) */}
       <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />

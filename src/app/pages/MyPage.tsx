@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { User, Package, Wrench, Calendar, CreditCard, LogOut } from 'lucide-react';
+import { User, Package, Wrench, Calendar, CreditCard, LogOut, Info } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { ROUTES } from '../../constants/routes';
 
 export function MyPage() {
   const { user, logout, isAuthenticated, loading } = useAuth();
@@ -53,29 +54,29 @@ export function MyPage() {
 
           {/* Quick Menu */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-            <Link
-              to="/points"
+            <button
+              onClick={() => document.getElementById('section-orders')?.scrollIntoView({ behavior: 'smooth' })}
               className="p-6 border border-border hover:border-primary transition-colors text-center"
             >
               <CreditCard className="w-8 h-8 mx-auto mb-2" />
               <p>포인트 관리</p>
-            </Link>
-            <Link
-              to="/orders"
+            </button>
+            <button
+              onClick={() => document.getElementById('section-orders')?.scrollIntoView({ behavior: 'smooth' })}
               className="p-6 border border-border hover:border-primary transition-colors text-center"
             >
               <Package className="w-8 h-8 mx-auto mb-2" />
               <p>주문 내역</p>
-            </Link>
+            </button>
             <Link
-              to="/service"
+              to={ROUTES.SERVICE_REQUEST}
               className="p-6 border border-border hover:border-primary transition-colors text-center"
             >
               <Wrench className="w-8 h-8 mx-auto mb-2" />
               <p>A/S 신청</p>
             </Link>
             <Link
-              to="/consulting"
+              to={ROUTES.CONSULTING_BOOKING}
               className="p-6 border border-border hover:border-primary transition-colors text-center"
             >
               <Calendar className="w-8 h-8 mx-auto mb-2" />
@@ -83,11 +84,23 @@ export function MyPage() {
             </Link>
           </div>
 
+          {/* Orders Section */}
+          <div className="mb-12" id="section-orders">
+            <h2 className="text-2xl mb-6">주문 내역</h2>
+            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
+              <Info className="w-4 h-4 mt-0.5 shrink-0" />
+              <p>서버 데이터베이스 연결 후 이용할 수 있습니다. 주문하신 내역은 연결 완료 시 자동으로 표시됩니다.</p>
+            </div>
+          </div>
+
           {/* Purchased Devices */}
           <div className="mb-12">
             <h2 className="text-2xl mb-6">구매한 기기</h2>
             {purchasedDevices.length === 0 ? (
-              <p className="text-muted-foreground">구매한 기기가 없습니다.</p>
+              <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
+                <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>서버 데이터베이스 연결 후 구매한 기기 목록이 표시됩니다.</p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {purchasedDevices.map((device) => (
@@ -124,7 +137,10 @@ export function MyPage() {
           <div className="mb-12">
             <h2 className="text-2xl mb-6">A/S 신청 내역</h2>
             {serviceRequests.length === 0 ? (
-              <p className="text-muted-foreground">A/S 신청 내역이 없습니다.</p>
+              <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
+                <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>서버 데이터베이스 연결 후 A/S 신청 내역이 표시됩니다.</p>
+              </div>
             ) : (
               <div className="border border-border">
                 <table className="w-full">
@@ -167,7 +183,10 @@ export function MyPage() {
           <div className="mb-12">
             <h2 className="text-2xl mb-6">컨설팅 예약 내역</h2>
             {consultations.length === 0 ? (
-              <p className="text-muted-foreground">컨설팅 예약 내역이 없습니다.</p>
+              <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
+                <Info className="w-4 h-4 mt-0.5 shrink-0" />
+                <p>서버 데이터베이스 연결 후 컨설팅 예약 내역이 표시됩니다.</p>
+              </div>
             ) : (
               <div className="border border-border">
                 <table className="w-full">
