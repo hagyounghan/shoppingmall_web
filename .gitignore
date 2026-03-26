@@ -1,17 +1,14 @@
 # Dependencies
-node_modules/
-**/node_modules/
-web_client/node_modules/
-admin-client/node_modules/
-server/node_modules/
+/dist
+/node_modules
 
 # Build outputs
 dist/
 build/
 **/dist/
 **/build/
-web_client/dist/
-web_client/build/
+shoppingmall/dist/
+shoppingmall/build/
 admin-client/dist/
 admin-client/build/
 server/dist/

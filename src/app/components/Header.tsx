@@ -34,7 +34,7 @@ const navigationItems: NavigationItem[] = [
     to: ROUTES.PURCHASE_CONSULTING,
     subItems: [
       { label: '구매컨설팅', to: ROUTES.PURCHASE_CONSULTING },
-      { label: '사용성 컨설팅', to: ROUTES.USABILITY_CONSULTING },
+      { label: 'AS 컨설팅', to: ROUTES.USABILITY_CONSULTING },
     ]
   },
   {

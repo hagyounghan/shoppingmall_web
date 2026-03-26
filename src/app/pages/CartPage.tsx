@@ -155,7 +155,7 @@ export function CartPage() {
               <h2 className="text-xl font-bold mb-4">주문 요약</h2>
 
               <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-muted-foreground">
+                <div className="flex justify-between text-muted-foreground">ㄹ
                   <span>상품 금액</span>
                   <span>{formatPrice(getDummyTotalPrice())}</span>
                 </div>

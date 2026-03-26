@@ -182,7 +182,6 @@ export function BrandDetailPage() {
                 <option>기타</option>
               </select>
               <select className="px-4 py-2 border border-border bg-white">
-                <option>정렬: 인기순</option>
                 <option>정렬: 최신순</option>
                 <option>정렬: 낮은 가격순</option>
                 <option>정렬: 높은 가격순</option>

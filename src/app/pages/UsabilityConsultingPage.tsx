@@ -43,7 +43,7 @@ export function UsabilityConsultingPage() {
         <div className="min-h-screen bg-white">
             <div className="container mx-auto px-4 py-12">
                 <div className="max-w-3xl mx-auto">
-                    <h1 className="text-3xl mb-4 text-center">사용성 컨설팅</h1>
+                    <h1 className="text-3xl mb-4 text-center">AS 컨설팅</h1>
                     <p className="text-center text-muted-foreground mb-12">
                         이미 구매하신 제품을 더 효과적으로 활용할 수 있도록 도와드립니다
                     </p>

@@ -1,107 +1,127 @@
-import React from 'react';
+// ==========================================
+// 1. 공통 응답 처리 (페이지네이션)
+// ==========================================
+export interface PaginatedProducts {
+  data: Product[];
+  total: number;
+  page: number;
+  take: number;
+  totalPages: number;
+}
 
-// 공통 타입 정의
+// ==========================================
+// 2. 제품 (Product) 관련 타입
+// ==========================================
+export interface ProductImage {
+  id: string;
+  productId: string;
+  url: string;
+  alt: string;
+  order: number;
+}
+
+export interface ProductOption {
+  id: string;
+  productId: string;
+  name: string;
+  price: number;
+  stock: number;
+  order: number;
+  isActive: boolean;
+}
+
+export interface RelatedProduct {
+  id: string;
+  category: 'transducer' | 'heading-sensor' | 'antenna';
+  product: Product; 
+  order: number;
+}
+
 export interface Product {
   id: string;
   name: string;
+  description: string;
   price: number;
   image: string;
-  tag?: 'BEST' | 'NEW' | 'SALE';
+  tag: 'BEST' | 'NEW' | 'SALE' | null;
+  brandId: string;
+  categoryId: string;
+  stock: number;
+  discountRate: number;
+  rating: number;
+  reviewCount: number;
+  viewCount: number;
+  salesCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  rank?: number; // UI에서 순위 표시용으로 사용 가능
+}
+
+export interface ProductDetail extends Product {
+  images: ProductImage[];
+  options: ProductOption[];
+  relatedProducts: RelatedProduct[];
+}
+
+// ==========================================
+// 3. 사용자 및 인증 (User & Auth)
+// ==========================================
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  fishingPoints: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthResponse {
+  user: User;
+  token: string;
+}
+
+// ==========================================
+// 4. 카테고리 및 브랜드 (Category & Brand)
+// ==========================================
+export interface Category {
+  id: string;
+  name: string;
+  label: string;
+  icon: string;
+  link: string;
+  description: string;
+  order: number;
+  isActive: boolean;
 }
 
 export interface Brand {
   id: string;
   name: string;
-  description: string;
-  productCount: number;
-  logo: string;
-  backgroundColor: string | null;
-  gradientColor: string;
-  hasLogo: boolean;
-  hasOverlay: boolean;
+  logo?: string;
+  description?: string;
 }
 
-export interface Category {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  link: string;
-}
-
-export interface User {
-  name: string;
-  email: string;
-  phone: string;
-  fishingPoints: number;
-}
-
-export interface ServiceRequest {
-  id: string;
-  device: string;
-  status: string;
-  date: string;
-}
-
-export interface Consultation {
-  id: string;
-  type: string;
-  status: string;
-  date: string;
-}
-
+// ==========================================
+// 5. 장바구니 및 찜 목록 (Cart & Wishlist)
+// ==========================================
 export interface CartItem {
   id: string;
+  userId: string;
   productId: string;
-  name: string;
-  price: number;
-  image: string;
+  optionId?: string;
   quantity: number;
-}
-
-export interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  token: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface WishlistItem {
   id: string;
+  userId: string;
   productId: string;
-  name: string;
-  price: number;
-  image: string;
-  tag?: 'BEST' | 'NEW' | 'SALE';
-}
-
-export interface EquipmentPosition {
-  id: string;
-  name: string;
-  x: number; // 배 이미지 내 x 좌표 (퍼센트)
-  y: number; // 배 이미지 내 y 좌표 (퍼센트)
-  category: string;
-}
-
-export interface SelectedEquipment {
-  positionId: string;
-  product: Product | null;
-}
-
-export interface EquipmentSet {
-  id: string;
-  name: string;
-  description: string;
-  equipment: {
-    positionId: string;
-    productId: string;
-  }[];
-}
-
-export interface RelatedProduct {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  description: string;
-  category: string; // 'transducer', 'heading-sensor', 'antenna' 등
+  createdAt: string;
+  updatedAt: string;
 }
 

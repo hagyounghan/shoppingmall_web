@@ -17,30 +17,42 @@ import { LoginPage } from '../app/pages/LoginPage';
 import { CartPage } from '../app/pages/CartPage';
 import { WishlistPage } from '../app/pages/WishlistPage';
 import { SimulatorPage } from '../app/pages/SimulatorPage';
+import AdminDashboard from '../app/pages/AdminDashboard'; // 관리자 페이지 임포트
 import { ROUTES } from '../constants/routes';
 
 export function AppRoutes() {
   return (
     <Routes>
+      {/* 메인 및 상품 관련 */}
       <Route path={ROUTES.HOME} element={<MainPage />} />
       <Route path="/product/:id" element={<ProductDetailPage />} />
       <Route path="/category/:categoryId" element={<CategoryPage />} />
+      
+      {/* 서비스 및 컨설팅 관련 */}
       <Route path={ROUTES.USABILITY_SERVICE} element={<UsabilityServicePage />} />
       <Route path={ROUTES.PURCHASE_CONSULTING} element={<PurchaseConsultingPage />} />
       <Route path={ROUTES.USABILITY_CONSULTING} element={<UsabilityConsultingPage />} />
+      
+      {/* 자료실 관련 */}
       <Route path={ROUTES.RESOURCE_CENTER} element={<ResourceCenterPage />} />
       <Route path={ROUTES.RESOURCE_LECTURE} element={<ResourceLecturePage />} />
       <Route path={ROUTES.RESOURCE_QNA} element={<ResourceQnAPage />} />
       <Route path={ROUTES.RESOURCE_FISHING_POINTS} element={<FishingPointsPage />} />
-      <Route path={ROUTES.MY_PAGE} element={<MyPage />} />
+      
+      {/* 브랜드 및 정보 관련 */}
       <Route path={ROUTES.BRANDS} element={<BrandsPage />} />
       <Route path="/brands/:brandId" element={<BrandDetailPage />} />
       <Route path={ROUTES.ABOUT} element={<AboutPage />} />
+      
+      {/* 사용자 관련 */}
+      <Route path={ROUTES.MY_PAGE} element={<MyPage />} />
       <Route path={ROUTES.LOGIN} element={<LoginPage />} />
       <Route path={ROUTES.CART} element={<CartPage />} />
       <Route path={ROUTES.WISHLIST} element={<WishlistPage />} />
       <Route path={ROUTES.SIMULATOR} element={<SimulatorPage />} />
+
+      {/* 🚀 관리자 대시보드 (신규 추가) */}
+      <Route path="/admin" element={<AdminDashboard />} />
     </Routes>
   );
 }
-
