@@ -1,24 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HelpCircle, BookOpen, Video, MessageSquare, Check, Loader2, Edit2 } from 'lucide-react';
+import { HelpCircle, BookOpen, Video, MessageSquare, Check, Loader2, Edit2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiPost, apiGet, apiPatch } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
 import { ROUTES } from '../../constants/routes';
-import { UsabilityServiceRequest, USABILITY_STATUS_LABELS } from '../../types';
+import { UsabilityServiceRequest, USABILITY_STATUS_LABELS, PurchasedProduct, PaginatedResponse } from '../../types';
 import { Button } from '../components/ui/button';
+
+const PRODUCTS_PER_PAGE = 5;
 
 export function UsabilityServicePage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const [selectedDevice, setSelectedDevice] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [serviceType, setServiceType] = useState('');
   const [question, setQuestion] = useState('');
   const [contactMethod, setContactMethod] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
+
+  // 구매 제품 (페이지네이션)
+  const [products, setProducts] = useState<PurchasedProduct[]>([]);
+  const [productPage, setProductPage] = useState(1);
+  const [productTotal, setProductTotal] = useState(0);
+  const [productTotalPages, setProductTotalPages] = useState(0);
+  const [productLoading, setProductLoading] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -27,17 +36,10 @@ export function UsabilityServicePage() {
   const [requests, setRequests] = useState<UsabilityServiceRequest[]>([]);
   const [listLoading, setListLoading] = useState(false);
 
-  // 수정 상태
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
-
-  const myDevices = [
-    { id: '1', name: 'GARMIN GPSMAP 8612', purchaseDate: '2024.01.15' },
-    { id: '2', name: 'LOWRANCE HDS-12 LIVE', purchaseDate: '2023.11.20' },
-    { id: '3', name: 'FURUNO DRS4W', purchaseDate: '2024.03.10' },
-  ];
 
   const serviceTypes = [
     { value: 'manual', label: '사용 설명서', icon: BookOpen, desc: '제품 사용 방법 및 기능 설명서 제공' },
@@ -45,6 +47,22 @@ export function UsabilityServicePage() {
     { value: 'chat', label: '실시간 문의', icon: MessageSquare, desc: '전문가와 실시간 채팅 상담' },
     { value: 'help', label: '기능 안내', icon: HelpCircle, desc: '특정 기능 사용 방법 안내' },
   ];
+
+  const loadProducts = async (page: number) => {
+    setProductLoading(true);
+    try {
+      const res = await apiGet<PaginatedResponse<PurchasedProduct>>(
+        API_ENDPOINTS.ORDERS_ME_PRODUCTS(page, PRODUCTS_PER_PAGE)
+      );
+      setProducts(res.data ?? []);
+      setProductTotal(res.total ?? 0);
+      setProductTotalPages(res.totalPages ?? 0);
+    } catch {
+      setProducts([]);
+    } finally {
+      setProductLoading(false);
+    }
+  };
 
   const loadRequests = async () => {
     setListLoading(true);
@@ -60,9 +78,16 @@ export function UsabilityServicePage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
+      loadProducts(1);
       loadRequests();
     }
   }, [authLoading, isAuthenticated]);
+
+  const handleProductPageChange = (page: number) => {
+    setProductPage(page);
+    setSelectedProductId('');
+    loadProducts(page);
+  };
 
   if (authLoading) {
     return (
@@ -97,14 +122,14 @@ export function UsabilityServicePage() {
     }
 
     const serviceLabel = serviceTypes.find(t => t.value === serviceType)?.label ?? '사용성 서비스';
-    const deviceName = myDevices.find(d => d.id === selectedDevice)?.name ?? '';
-    const title = deviceName
-      ? `[${serviceLabel}] ${deviceName}`
+    const selectedProduct = products.find(p => p.id === selectedProductId);
+    const title = selectedProduct
+      ? `[${serviceLabel}] ${selectedProduct.name}`
       : `[${serviceLabel}] 문의`;
 
     const lines: string[] = [];
     if (serviceType) lines.push(`서비스 유형: ${serviceLabel}`);
-    if (deviceName) lines.push(`제품: ${deviceName}`);
+    if (selectedProduct) lines.push(`제품: ${selectedProduct.name}`);
     lines.push(`\n문의 내용:\n${question.trim()}`);
     if (contactMethod) lines.push(`\n연락 방법: ${contactMethod}`);
     if (contactName) lines.push(`이름: ${contactName}`);
@@ -115,7 +140,7 @@ export function UsabilityServicePage() {
     try {
       await apiPost(API_ENDPOINTS.USABILITY_SERVICES, { title, content: lines.join('\n') });
       setSubmitSuccess('서비스가 신청되었습니다. 24시간 이내에 담당자가 연락드립니다.');
-      setSelectedDevice('');
+      setSelectedProductId('');
       setServiceType('');
       setQuestion('');
       setContactMethod('');
@@ -191,28 +216,93 @@ export function UsabilityServicePage() {
             </div>
           </div>
 
-          {/* Device Selection */}
+          {/* Device Selection - 구매한 제품 */}
           <div className="mb-8">
             <label className="block mb-4">제품 선택</label>
-            <div className="space-y-3">
-              {myDevices.map((device) => (
-                <button
-                  key={device.id}
-                  onClick={() => setSelectedDevice(device.id)}
-                  className={`w-full p-4 border text-left flex items-center justify-between transition-all ${
-                    selectedDevice === device.id
-                      ? 'border-primary bg-blue-50'
-                      : 'border-border hover:border-primary'
-                  }`}
-                >
-                  <div>
-                    <p className="font-semibold">{device.name}</p>
-                    <p className="text-sm text-muted-foreground">구매일: {device.purchaseDate}</p>
+
+            {productLoading ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground border border-border">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                불러오는 중...
+              </div>
+            ) : products.length === 0 ? (
+              <div className="py-6 text-center text-muted-foreground border border-dashed border-border">
+                구매 완료된 제품이 없습니다.
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {products.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => setSelectedProductId(product.id)}
+                      className={`w-full p-4 border text-left flex items-center justify-between transition-all ${
+                        selectedProductId === product.id
+                          ? 'border-primary bg-blue-50'
+                          : 'border-border hover:border-primary'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {product.image ? (
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded border border-border flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-secondary rounded border border-border flex-shrink-0" />
+                        )}
+                        <div>
+                          <p className="font-semibold">{product.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            구매일: {new Date(product.purchasedAt).toLocaleDateString('ko-KR')}
+                          </p>
+                        </div>
+                      </div>
+                      {selectedProductId === product.id && <Check className="w-5 h-5 text-primary flex-shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 페이지네이션 */}
+                {productTotalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <span className="text-sm text-muted-foreground">
+                      총 {productTotal}개 제품 ({productPage}/{productTotalPages} 페이지)
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleProductPageChange(productPage - 1)}
+                        disabled={productPage <= 1}
+                        className="p-1.5 border border-border hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      {Array.from({ length: productTotalPages }, (_, i) => i + 1).map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => handleProductPageChange(p)}
+                          className={`w-8 h-8 text-sm border transition-colors ${
+                            p === productPage
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border hover:bg-secondary'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handleProductPageChange(productPage + 1)}
+                        disabled={productPage >= productTotalPages}
+                        className="p-1.5 border border-border hover:bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  {selectedDevice === device.id && <Check className="w-5 h-5 text-primary" />}
-                </button>
-              ))}
-            </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Question/Request */}

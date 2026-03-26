@@ -9,6 +9,22 @@ export interface PaginatedProducts {
   totalPages: number;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  take: number;
+  totalPages: number;
+}
+
+export interface PurchasedProduct {
+  id: string;
+  name: string;
+  image: string | null;
+  price: number;
+  purchasedAt: string;
+}
+
 // ==========================================
 // 2. 제품 (Product) 관련 타입
 // ==========================================

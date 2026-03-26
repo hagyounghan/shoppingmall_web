@@ -44,6 +44,7 @@ export const API_ENDPOINTS = {
   ORDERS: '/orders',
   ORDERS_GUEST: '/orders/guest',
   ORDERS_ME: '/orders/me',
+  ORDERS_ME_PRODUCTS: (page: number, take: number) => `/orders/me/products?page=${page}&take=${take}`,
   ORDER_GUEST_DETAIL: (orderId: string) => `/orders/guest/${orderId}`,
   ORDER_STATUS: (id: string) => `/orders/${id}/status`,
 
