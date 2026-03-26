@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { formatPrice } from '../../utils/format';
-import { Product, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets } from '../../types';
+import { Product, Category, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets } from '../../types';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -14,30 +14,19 @@ import { API_ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { PaginatedProducts } from '../../types';
 
-// 장비 위치 정의
+// 장비 위치 정의 — id가 서버 category slug와 1:1 대응
 const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
-  { id: 'gps-plotter', name: 'GPS플로터', x: 45, y: 25, category: 'GPS' },
-  { id: 'radar', name: '레이더', x: 50, y: 15, category: 'Radar' },
-  { id: 'vhf-radio', name: 'VHF 무선기', x: 20, y: 30, category: 'VHF' },
-  { id: 'trolling-motor', name: '트롤링모터', x: 15, y: 70, category: 'TrollingMotor' },
-  { id: 'fishfinder', name: '송수파기', x: 75, y: 50, category: 'Fishfinder' },
-  { id: 'autopilot', name: '자동조타', x: 60, y: 60, category: 'Autopilot' },
+  { id: 'gps-plotter',    name: 'GPS플로터',  x: 45, y: 25, category: 'GPS' },
+  { id: 'radar',          name: '레이더',      x: 50, y: 15, category: 'Radar' },
+  { id: 'vhf-radio',      name: 'VHF 무선기', x: 20, y: 30, category: 'VHF' },
+  { id: 'trolling-motor', name: '트롤링모터',  x: 15, y: 70, category: 'TrollingMotor' },
+  { id: 'transducer',     name: '송수파기',    x: 75, y: 50, category: 'Transducer' },
+  { id: 'autopilot',      name: '자동조타',    x: 60, y: 60, category: 'Autopilot' },
 ];
 
-// 서버 categoryId → EQUIPMENT_POSITIONS id 매핑
-const CATEGORY_ID_TO_POSITION: Record<string, string> = {
-  'aab0233c-0ca2-45da-800a-661db9264f59': 'gps-plotter',    // GPS플로터 (GPS 플로터 및 어군탐지기)
-  'e300e901-0e6f-412b-94e2-9377cbdcd1fe': 'radar',           // 레이더
-  'f087bf5e-b9c4-4635-8001-5e03502c07db': 'vhf-radio',       // 무선/통신장비
-  '2104eb29-9c36-41f0-b03d-4764350a7c01': 'trolling-motor',  // 트롤링모터
-  '48a9917e-ce2b-45ea-9582-50c57402f32b': 'autopilot',       // 항해 조타장비
-  'f318d31f-797e-4cba-8088-70429352ca90': 'fishfinder',      // 해상용 안테나/헤딩센서
-};
+// slug → { id, parentId } — 서버에서 로드 후 채워짐
+type SlugMap = Record<string, Pick<Category, 'id' | 'parentId'>>;
 
-// EQUIPMENT_POSITIONS id → 서버 categoryId 역방향 매핑
-const POSITION_TO_CATEGORY_ID: Record<string, string> = Object.fromEntries(
-  Object.entries(CATEGORY_ID_TO_POSITION).map(([catId, posId]) => [posId, catId])
-);
 
 const PRESET_SET_KEYS = ['premium', 'value', 'budget'] as const;
 type PresetKey = typeof PRESET_SET_KEYS[number];
@@ -59,6 +48,7 @@ export function SimulatorPage() {
   const { isAuthenticated, user } = useAuth();
   const [boatType, setBoatType] = useState<'fishing' | 'leisure'>('leisure');
 
+  const [slugMap, setSlugMap] = useState<SlugMap>({});
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]); // 프리셋 적용용 전체 캐시
   const [apiLoading, setApiLoading] = useState(false);
@@ -88,6 +78,20 @@ export function SimulatorPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
 
+  // 카테고리 slug 맵 로드 (1회) — UUID 하드코딩 제거
+  useEffect(() => {
+    apiGet<{ data: Category[] }>(`${API_ENDPOINTS.CATEGORIES}?take=200`)
+      .then(res => {
+        const list: Category[] = Array.isArray(res) ? res : res?.data ?? [];
+        const map: SlugMap = {};
+        list.forEach(c => {
+          if (c.slug) map[c.slug] = { id: c.id, parentId: c.parentId };
+        });
+        setSlugMap(map);
+      })
+      .catch(() => {});
+  }, []);
+
   // 프리셋 적용용 전체 상품 로드 (1회)
   useEffect(() => {
     apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=200`)
@@ -95,23 +99,28 @@ export function SimulatorPage() {
       .catch(() => {});
   }, []);
 
-  // 위치 선택 시 해당 카테고리 상품 로드
+  // 위치 선택 시 slug → categoryId 조회 후 상품 로드
   useEffect(() => {
     if (!selectedPosition) {
       setApiProducts([]);
       return;
     }
-    const categoryId = POSITION_TO_CATEGORY_ID[selectedPosition.id];
-    if (!categoryId) {
+    const cat = slugMap[selectedPosition.id]; // position.id === slug
+    if (!cat) {
       setApiProducts([]);
       return;
     }
     setApiLoading(true);
-    apiGet<PaginatedProducts>(API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(categoryId))
+    // 메인 카테고리(parentId=null) → /products/main-category/:id
+    // 서브 카테고리(parentId≠null) → /products/category/:id
+    const endpoint = cat.parentId === null
+      ? API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(cat.id)
+      : API_ENDPOINTS.PRODUCTS_BY_CATEGORY(cat.id);
+    apiGet<PaginatedProducts>(endpoint)
       .then(res => setApiProducts(Array.isArray(res) ? res : res?.data ?? []))
       .catch(() => setApiProducts([]))
       .finally(() => setApiLoading(false));
-  }, [selectedPosition]);
+  }, [selectedPosition, slugMap]);
 
   // 프리셋 세트 (프리미엄/가성비/가심비) 서버에서 로드
   useEffect(() => {
@@ -197,12 +206,16 @@ export function SimulatorPage() {
   };
 
   const applyServerSet = (set: SimulatorSet) => {
+    // categoryId → slug 역방향 맵 (slugMap에서 생성)
+    const idToSlug: Record<string, string> = {};
+    Object.entries(slugMap).forEach(([slug, cat]) => { idToSlug[cat.id] = slug; });
+
     const newSelection: Record<string, SelectedEquipment> = {};
     EQUIPMENT_POSITIONS.forEach(pos => {
       newSelection[pos.id] = { positionId: pos.id, product: null };
     });
     set.items.forEach(item => {
-      const positionId = CATEGORY_ID_TO_POSITION[item.categoryId];
+      const positionId = idToSlug[item.categoryId]; // categoryId → slug === positionId
       if (!positionId) return;
       const product = allProducts.find(p => p.id === item.productId);
       if (product) newSelection[positionId] = { positionId, product };
