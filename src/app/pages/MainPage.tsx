@@ -48,7 +48,7 @@ export function MainPage() {
       {/* Categories */}
       <section className="py-16 bg-secondary">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
             {CATEGORIES.map((category) => (
               <Link
                 key={category.id}
