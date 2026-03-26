@@ -59,4 +59,6 @@ export const API_ENDPOINTS = {
   // Simulator (인증 필요)
   SIMULATOR_SETS: '/simulator/sets',
   SIMULATOR_SET: (id: string) => `/simulator/sets/${id}`,
+  // Simulator 추천 세트 (인증 불필요)
+  SIMULATOR_PRESETS: (type?: string) => type ? `/simulator/presets?type=${type}` : '/simulator/presets',
 } as const;

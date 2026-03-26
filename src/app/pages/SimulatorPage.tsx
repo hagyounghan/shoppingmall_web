@@ -38,9 +38,9 @@ const PRESET_SET_KEYS = ['premium', 'value', 'budget'] as const;
 type PresetKey = typeof PRESET_SET_KEYS[number];
 
 const PRESET_META: Record<PresetKey, { name: string; description: string; searchKeyword: string }> = {
-  premium: { name: '명장세트', description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트', searchKeyword: '명장' },
-  value:   { name: '가성비세트', description: '합리적인 가격의 실용적인 세트', searchKeyword: '가성비' },
-  budget:  { name: '가심비세트', description: '경제적인 가격의 기본 세트', searchKeyword: '가심비' },
+  premium: { name: '프리미엄 세트', description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트', searchKeyword: '프리미엄' },
+  value:   { name: '가성비 세트', description: '합리적인 가격의 실용적인 세트', searchKeyword: '가성비' },
+  budget:  { name: '가심비 세트', description: '경제적인 가격의 기본 세트', searchKeyword: '가심비' },
 };
 
 const MAX_SETS = 3;
@@ -91,16 +91,16 @@ export function SimulatorPage() {
       .finally(() => setApiLoading(false));
   }, []);
 
-  // 프리셋 세트 (명장/가성비/가심비) 서버에서 로드
+  // 프리셋 세트 (프리미엄/가성비/가심비) 서버에서 로드
   useEffect(() => {
     const apiType = toApiType(boatType);
-    apiGet<PaginatedSimulatorSets>(`${API_ENDPOINTS.SIMULATOR_SETS}?type=${apiType}&take=50`)
-      .then(res => {
-        const sets: SimulatorSet[] = Array.isArray(res) ? res : res?.data ?? [];
+    apiGet<SimulatorSet[]>(API_ENDPOINTS.SIMULATOR_PRESETS(apiType))
+      .then(sets => {
+        const list: SimulatorSet[] = Array.isArray(sets) ? sets : [];
         setPresetSets({
-          premium: sets.find(s => s.name.includes(PRESET_META.premium.searchKeyword)) ?? null,
-          value:   sets.find(s => s.name.includes(PRESET_META.value.searchKeyword))   ?? null,
-          budget:  sets.find(s => s.name.includes(PRESET_META.budget.searchKeyword))  ?? null,
+          premium: list.find(s => s.name.includes(PRESET_META.premium.searchKeyword)) ?? null,
+          value:   list.find(s => s.name.includes(PRESET_META.value.searchKeyword))   ?? null,
+          budget:  list.find(s => s.name.includes(PRESET_META.budget.searchKeyword))  ?? null,
         });
       })
       .catch(() => setPresetSets({ premium: null, value: null, budget: null }));
