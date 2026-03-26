@@ -26,7 +26,7 @@ const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
 
 // 서버 categoryId → EQUIPMENT_POSITIONS id 매핑
 const CATEGORY_ID_TO_POSITION: Record<string, string> = {
-  '962ce406-2509-4840-84f3-6a67be2c0ffe': 'gps-plotter',    // GPS플로터
+  'aab0233c-0ca2-45da-800a-661db9264f59': 'gps-plotter',    // GPS플로터 (GPS 플로터 및 어군탐지기)
   'e300e901-0e6f-412b-94e2-9377cbdcd1fe': 'radar',           // 레이더
   'f087bf5e-b9c4-4635-8001-5e03502c07db': 'vhf-radio',       // 무선/통신장비
   '2104eb29-9c36-41f0-b03d-4764350a7c01': 'trolling-motor',  // 트롤링모터

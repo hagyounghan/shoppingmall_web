@@ -20,10 +20,10 @@ export interface CategoryItem {
 
 export const CATEGORIES: CategoryItem[] = [
   {
-    id: '962ce406-2509-4840-84f3-6a67be2c0ffe',
+    id: 'aab0233c-0ca2-45da-800a-661db9264f59',
     name: 'GPS플로터',
     icon: Navigation,
-    link: '/category/962ce406-2509-4840-84f3-6a67be2c0ffe',
+    link: '/category/aab0233c-0ca2-45da-800a-661db9264f59',
   },
   {
     id: 'e300e901-0e6f-412b-94e2-9377cbdcd1fe',
