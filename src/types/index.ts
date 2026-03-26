@@ -79,8 +79,17 @@ export interface User {
 }
 
 export interface AuthResponse {
-  user: User;
-  token: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    phone: string | null;
+    role: 'admin' | 'customer';
+    fishingPoints: number;
+  };
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 }
 
 export interface AuthUser {
@@ -89,6 +98,7 @@ export interface AuthUser {
   name: string;
   phone?: string;
   fishingPoints?: number;
+  role?: 'admin' | 'customer';
   token: string;
 }
 

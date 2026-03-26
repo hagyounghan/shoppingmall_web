@@ -38,8 +38,12 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      navigate(ROUTES.HOME);
+      const authUser = await login(email, password);
+      if (authUser.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate(ROUTES.HOME);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');
     } finally {

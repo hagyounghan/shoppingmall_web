@@ -6,7 +6,7 @@ import { API_ENDPOINTS } from '../config/api';
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   register: (email: string, password: string, name: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -25,6 +25,7 @@ function saveAuth(token: string, user: AuthUser) {
     name: user.name,
     phone: user.phone,
     fishingPoints: user.fishingPoints,
+    role: user.role,
   }));
 }
 
@@ -67,18 +68,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<AuthUser> => {
     const res = await apiPost<AuthResponse>(API_ENDPOINTS.LOGIN, { email, password });
     const authUser: AuthUser = {
       id: res.user.id,
       email: res.user.email,
       name: res.user.name,
-      phone: res.user.phone,
+      phone: res.user.phone ?? undefined,
       fishingPoints: res.user.fishingPoints,
-      token: res.token,
+      role: res.user.role,
+      token: res.accessToken,
     };
-    saveAuth(res.token, authUser);
+    saveAuth(res.accessToken, authUser);
     setUser(authUser);
+    return authUser;
   };
 
   const register = async (email: string, password: string, name: string, phone?: string) => {
@@ -87,11 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: res.user.id,
       email: res.user.email,
       name: res.user.name,
-      phone: res.user.phone,
+      phone: res.user.phone ?? undefined,
       fishingPoints: res.user.fishingPoints,
-      token: res.token,
+      role: res.user.role,
+      token: res.accessToken,
     };
-    saveAuth(res.token, authUser);
+    saveAuth(res.accessToken, authUser);
     setUser(authUser);
   };
 

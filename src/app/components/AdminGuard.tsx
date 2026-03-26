@@ -8,7 +8,7 @@ interface AdminGuardProps {
 }
 
 export function AdminGuard({ children }: AdminGuardProps) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -20,6 +20,10 @@ export function AdminGuard({ children }: AdminGuardProps) {
 
   if (!isAuthenticated) {
     return <Navigate to={ROUTES.LOGIN} replace />;
+  }
+
+  if (user?.role !== 'admin') {
+    return <Navigate to={ROUTES.HOME} replace />;
   }
 
   return <>{children}</>;
