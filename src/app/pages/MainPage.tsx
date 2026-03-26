@@ -51,7 +51,7 @@ export function MainPage() {
           <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
             {CATEGORIES.map((category) => (
               <Link
-                key={category.slug}
+                key={category.id}
                 to={category.link}
                 className="flex flex-col items-center gap-3 p-4 bg-white border border-border hover:border-primary transition-colors group"
               >
@@ -59,7 +59,7 @@ export function MainPage() {
                   <category.icon className="w-6 h-6" />
                 </div>
                 <span className="text-sm text-center">
-                  {category.label}
+                  {category.name}
                 </span>
               </Link>
             ))}

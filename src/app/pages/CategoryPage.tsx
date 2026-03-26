@@ -3,29 +3,24 @@ import { useParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Product } from '../../types';
 import { CATEGORIES } from '../../constants/categories';
-import { getCategories, getProducts, getTopProducts } from '../../api/productApi';
+import { getProducts, getTopProducts } from '../../api/productApi';
 
 export function CategoryPage() {
-  const { categoryId: slug } = useParams<{ categoryId: string }>();
+  const { categoryId } = useParams<{ categoryId: string }>();
 
-  const localCategory = CATEGORIES.find((c) => c.slug === slug);
-  const categoryName = localCategory?.label || '제품';
+  const localCategory = CATEGORIES.find((c) => c.id === categoryId);
+  const categoryName = localCategory?.name || '제품';
 
   const [products, setProducts] = useState<Product[]>([]);
   const [topProducts, setTopProducts] = useState<(Product & { rank: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!localCategory) return;
+    if (!categoryId) return;
 
     const fetchData = async () => {
       try {
         setLoading(true);
-
-        // 서버 카테고리 목록에서 serverName으로 ID 조회
-        const allCategories = await getCategories();
-        const matched = allCategories.find((c) => c.name === localCategory.serverName);
-        const categoryId = matched?.id;
 
         const [productsResponse, topProductsData] = await Promise.all([
           getProducts({ categoryId }),
@@ -47,7 +42,7 @@ export function CategoryPage() {
     };
 
     fetchData();
-  }, [slug]);
+  }, [categoryId]);
 
   return (
     <div className="min-h-screen bg-white">
