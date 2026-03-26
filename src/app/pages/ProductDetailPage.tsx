@@ -75,7 +75,7 @@ export function ProductDetailPage() {
   }
 
   // relatedProducts를 카테고리별로 그룹핑
-  const relatedProductsByCategory = product.relatedProducts.reduce(
+  const relatedProductsByCategory = (product.relatedProducts ?? []).reduce(
     (acc, rp) => {
       const cat = rp.category;
       acc[cat] = [...(acc[cat] || []), rp];
