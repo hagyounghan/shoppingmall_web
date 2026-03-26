@@ -24,58 +24,23 @@ const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
   { id: 'autopilot', name: '자동조타', x: 60, y: 60, category: 'Autopilot' },
 ];
 
-const ALL_PRODUCTS: Product[] = [
-  { id: '1', name: 'GARMIN GPSMAP 1243 (12")', price: 2300000, image: 'https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400', tag: 'BEST' },
-  { id: '2', name: 'RAYMARINE Axiom 9 (9")', price: 1850000, image: 'https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400' },
-  { id: '3', name: 'FURUNO GP-1871F (7")', price: 1450000, image: 'https://images.unsplash.com/photo-1758248421325-6f3a1d92075a?w=400' },
-  { id: '4', name: 'FURUNO DRS4W 4kW 레이더', price: 3800000, image: 'https://images.unsplash.com/photo-1758248421325-6f3a1d92075a?w=400' },
-  { id: '5', name: 'GARMIN GMR 24 xHD2 레이더', price: 4200000, image: 'https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400' },
-  { id: '6', name: 'ICOM IC-M506 고정형 VHF', price: 450000, image: 'https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400' },
-  { id: '7', name: 'STANDARD HORIZON GX2400 VHF', price: 380000, image: 'https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400' },
-  { id: '8', name: 'MINN KOTA TERROVA 트롤링모터', price: 3200000, image: 'https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400' },
-  { id: '9', name: 'LOWRANCE HDS-12 LIVE 어군탐지기', price: 2890000, image: 'https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400', tag: 'NEW' },
-  { id: '10', name: 'GARMIN STRIKER Plus 7sv', price: 1250000, image: 'https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400' },
-  { id: '11', name: 'RAYMARINE EV-200 자동조타', price: 2800000, image: 'https://images.unsplash.com/photo-1719448081072-8090553a77fe?w=400' },
-];
-
-const SAMPLE_PRODUCTS: Record<string, Product[]> = {
-  'GPS': ALL_PRODUCTS.filter(p => ['1','2','3'].includes(p.id)),
-  'Radar': ALL_PRODUCTS.filter(p => ['4','5'].includes(p.id)),
-  'VHF': ALL_PRODUCTS.filter(p => ['6','7'].includes(p.id)),
-  'TrollingMotor': ALL_PRODUCTS.filter(p => p.id === '8'),
-  'Fishfinder': ALL_PRODUCTS.filter(p => ['9','10'].includes(p.id)),
-  'Autopilot': ALL_PRODUCTS.filter(p => p.id === '11'),
+// 서버 categoryId → EQUIPMENT_POSITIONS id 매핑
+const CATEGORY_ID_TO_POSITION: Record<string, string> = {
+  '962ce406-2509-4840-84f3-6a67be2c0ffe': 'gps-plotter',    // GPS플로터
+  'e300e901-0e6f-412b-94e2-9377cbdcd1fe': 'radar',           // 레이더
+  'f087bf5e-b9c4-4635-8001-5e03502c07db': 'vhf-radio',       // 무선/통신장비
+  '2104eb29-9c36-41f0-b03d-4764350a7c01': 'trolling-motor',  // 트롤링모터
+  '48a9917e-ce2b-45ea-9582-50c57402f32b': 'autopilot',       // 항해 조타장비
+  'f318d31f-797e-4cba-8088-70429352ca90': 'fishfinder',      // 해상용 안테나/헤딩센서
 };
 
-const EQUIPMENT_SETS = {
-  premium: {
-    name: '명장세트',
-    description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트',
-    equipment: [
-      { positionId: 'gps-plotter', productId: '1' },
-      { positionId: 'radar', productId: '4' },
-      { positionId: 'vhf-radio', productId: '6' },
-      { positionId: 'fishfinder', productId: '9' },
-      { positionId: 'autopilot', productId: '11' },
-    ],
-  },
-  value: {
-    name: '가성비세트',
-    description: '합리적인 가격의 실용적인 세트',
-    equipment: [
-      { positionId: 'gps-plotter', productId: '3' },
-      { positionId: 'vhf-radio', productId: '7' },
-      { positionId: 'fishfinder', productId: '10' },
-    ],
-  },
-  budget: {
-    name: '가심비세트',
-    description: '경제적인 가격의 기본 세트',
-    equipment: [
-      { positionId: 'gps-plotter', productId: '2' },
-      { positionId: 'vhf-radio', productId: '7' },
-    ],
-  },
+const PRESET_SET_KEYS = ['premium', 'value', 'budget'] as const;
+type PresetKey = typeof PRESET_SET_KEYS[number];
+
+const PRESET_META: Record<PresetKey, { name: string; description: string; searchKeyword: string }> = {
+  premium: { name: '명장세트', description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트', searchKeyword: '명장' },
+  value:   { name: '가성비세트', description: '합리적인 가격의 실용적인 세트', searchKeyword: '가성비' },
+  budget:  { name: '가심비세트', description: '경제적인 가격의 기본 세트', searchKeyword: '가심비' },
 };
 
 const MAX_SETS = 3;
@@ -91,6 +56,11 @@ export function SimulatorPage() {
 
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [apiLoading, setApiLoading] = useState(false);
+  const [presetSets, setPresetSets] = useState<Record<PresetKey, SimulatorSet | null>>({
+    premium: null,
+    value: null,
+    budget: null,
+  });
 
   // 내 저장 세트
   const [mySets, setMySets] = useState<{ fishing_vessel: SimulatorSet[]; leisure: SimulatorSet[] }>({
@@ -121,6 +91,21 @@ export function SimulatorPage() {
       .finally(() => setApiLoading(false));
   }, []);
 
+  // 프리셋 세트 (명장/가성비/가심비) 서버에서 로드
+  useEffect(() => {
+    const apiType = toApiType(boatType);
+    apiGet<PaginatedSimulatorSets>(`${API_ENDPOINTS.SIMULATOR_SETS}?type=${apiType}&take=50`)
+      .then(res => {
+        const sets: SimulatorSet[] = Array.isArray(res) ? res : res?.data ?? [];
+        setPresetSets({
+          premium: sets.find(s => s.name.includes(PRESET_META.premium.searchKeyword)) ?? null,
+          value:   sets.find(s => s.name.includes(PRESET_META.value.searchKeyword))   ?? null,
+          budget:  sets.find(s => s.name.includes(PRESET_META.budget.searchKeyword))  ?? null,
+        });
+      })
+      .catch(() => setPresetSets({ premium: null, value: null, budget: null }));
+  }, [boatType]);
+
   // 내 세트 로드 (로그인 시)
   useEffect(() => {
     if (!isAuthenticated) {
@@ -149,6 +134,16 @@ export function SimulatorPage() {
     };
     loadSets();
   }, [isAuthenticated, user?.id]);
+
+  // 프리셋 세트 총 가격 계산 (서버 데이터 기반)
+  const calcPresetTotal = (setId: PresetKey): number => {
+    const serverSet = presetSets[setId];
+    if (!serverSet || apiProducts.length === 0) return 0;
+    return serverSet.items.reduce((sum, item) => {
+      const product = apiProducts.find(p => p.id === item.productId);
+      return sum + (product?.price ?? 0);
+    }, 0);
+  };
 
   // preset set 적용
   useEffect(() => {
@@ -179,18 +174,30 @@ export function SimulatorPage() {
     }
   };
 
-  const handleSetSelect = (setId: keyof typeof EQUIPMENT_SETS) => {
-    const set = EQUIPMENT_SETS[setId];
+  const applyServerSet = (set: SimulatorSet) => {
     const newSelection: Record<string, SelectedEquipment> = {};
     EQUIPMENT_POSITIONS.forEach(pos => {
       newSelection[pos.id] = { positionId: pos.id, product: null };
     });
-    set.equipment.forEach(eq => {
-      const position = EQUIPMENT_POSITIONS.find(p => p.id === eq.positionId);
-      if (position) {
-        const product = SAMPLE_PRODUCTS[position.category]?.find(p => p.id === eq.productId);
-        if (product) newSelection[eq.positionId] = { positionId: eq.positionId, product };
-      }
+    set.items.forEach(item => {
+      const positionId = CATEGORY_ID_TO_POSITION[item.categoryId];
+      if (!positionId) return;
+      const product = apiProducts.find(p => p.id === item.productId);
+      if (product) newSelection[positionId] = { positionId, product };
+    });
+    setSelectedEquipment(newSelection);
+  };
+
+  const handleSetSelect = (setId: PresetKey) => {
+    const serverSet = presetSets[setId];
+    if (serverSet) {
+      applyServerSet(serverSet);
+      return;
+    }
+    // 서버 세트가 없으면 비어있는 상태로 초기화
+    const newSelection: Record<string, SelectedEquipment> = {};
+    EQUIPMENT_POSITIONS.forEach(pos => {
+      newSelection[pos.id] = { positionId: pos.id, product: null };
     });
     setSelectedEquipment(newSelection);
   };
@@ -306,14 +313,17 @@ export function SimulatorPage() {
                   <Crown className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-amber-900">명장세트</h3>
-                  <p className="text-xs text-amber-700 mt-1">프리미엄 구성</p>
+                  <h3 className="text-xl font-bold text-amber-900">{PRESET_META.premium.name}</h3>
+                  <p className="text-xs text-amber-700 mt-1">프리미엄 구성 · {presetSets.premium?.items.length ?? 0}개 장비</p>
                 </div>
               </div>
               <Sparkles className="w-5 h-5 text-amber-500" />
             </div>
-            <p className="text-sm text-amber-800 mb-4 line-clamp-2">{EQUIPMENT_SETS.premium.description}</p>
-            <p className="text-lg font-bold text-amber-900">{formatPrice(9440000)}</p>
+            <p className="text-sm text-amber-800 mb-4 line-clamp-2">{presetSets.premium?.description ?? PRESET_META.premium.description}</p>
+            {calcPresetTotal('premium') > 0
+              ? <p className="text-lg font-bold text-amber-900">{formatPrice(calcPresetTotal('premium'))}</p>
+              : <p className="text-sm text-amber-600">{presetSets.premium ? '가격 계산 중...' : '서버 데이터 없음'}</p>
+            }
           </button>
 
           <button onClick={() => handleSetSelect('value')} className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
@@ -323,14 +333,17 @@ export function SimulatorPage() {
                   <TrendingUp className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-blue-900">가성비세트</h3>
-                  <p className="text-xs text-blue-700 mt-1">추천 구성</p>
+                  <h3 className="text-xl font-bold text-blue-900">{PRESET_META.value.name}</h3>
+                  <p className="text-xs text-blue-700 mt-1">추천 구성 · {presetSets.value?.items.length ?? 0}개 장비</p>
                 </div>
               </div>
               <Sparkles className="w-5 h-5 text-blue-500" />
             </div>
-            <p className="text-sm text-blue-800 mb-4 line-clamp-2">{EQUIPMENT_SETS.value.description}</p>
-            <p className="text-lg font-bold text-blue-900">{formatPrice(3080000)}</p>
+            <p className="text-sm text-blue-800 mb-4 line-clamp-2">{presetSets.value?.description ?? PRESET_META.value.description}</p>
+            {calcPresetTotal('value') > 0
+              ? <p className="text-lg font-bold text-blue-900">{formatPrice(calcPresetTotal('value'))}</p>
+              : <p className="text-sm text-blue-600">{presetSets.value ? '가격 계산 중...' : '서버 데이터 없음'}</p>
+            }
           </button>
 
           <button onClick={() => handleSetSelect('budget')} className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
@@ -340,14 +353,17 @@ export function SimulatorPage() {
                   <Wallet className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-green-900">가심비세트</h3>
-                  <p className="text-xs text-green-700 mt-1">경제적 구성</p>
+                  <h3 className="text-xl font-bold text-green-900">{PRESET_META.budget.name}</h3>
+                  <p className="text-xs text-green-700 mt-1">경제적 구성 · {presetSets.budget?.items.length ?? 0}개 장비</p>
                 </div>
               </div>
               <Sparkles className="w-5 h-5 text-green-500" />
             </div>
-            <p className="text-sm text-green-800 mb-4 line-clamp-2">{EQUIPMENT_SETS.budget.description}</p>
-            <p className="text-lg font-bold text-green-900">{formatPrice(2230000)}</p>
+            <p className="text-sm text-green-800 mb-4 line-clamp-2">{presetSets.budget?.description ?? PRESET_META.budget.description}</p>
+            {calcPresetTotal('budget') > 0
+              ? <p className="text-lg font-bold text-green-900">{formatPrice(calcPresetTotal('budget'))}</p>
+              : <p className="text-sm text-green-600">{presetSets.budget ? '가격 계산 중...' : '서버 데이터 없음'}</p>
+            }
           </button>
         </div>
 
