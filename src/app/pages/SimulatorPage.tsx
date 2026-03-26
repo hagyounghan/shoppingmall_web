@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { formatPrice } from '../../utils/format';
-import { Product, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets } from '../../types';
+import { Product, Category, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets } from '../../types';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -12,7 +12,6 @@ import { BRANDS } from '../../constants/brands';
 import { apiGet, apiPost, apiDelete } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { useCategories } from '../../contexts/CategoryContext';
 import { PaginatedProducts } from '../../types';
 
 // 장비 위치 정의 — id가 서버 category slug와 1:1 대응
@@ -45,8 +44,9 @@ function toApiType(boatType: 'fishing' | 'leisure'): SimulatorType {
 export function SimulatorPage() {
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
-  const { slugMap } = useCategories();
   const [boatType, setBoatType] = useState<'fishing' | 'leisure'>('leisure');
+  // 시뮬레이터 전용 slug 맵 — 메인 + 서브 카테고리 포함 (transducer 등 서브카테고리 필요)
+  const [slugMap, setSlugMap] = useState<Record<string, Category>>({});
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]); // 프리셋 적용용 전체 캐시
   const [apiLoading, setApiLoading] = useState(false);
@@ -75,6 +75,18 @@ export function SimulatorPage() {
   const [includeInstallation, setIncludeInstallation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
+
+  // 시뮬레이터 전용: 메인 + 서브 카테고리 로드 → slug 맵 구성 (1회)
+  useEffect(() => {
+    apiGet<{ data: Category[] }>(`${API_ENDPOINTS.CATEGORIES}?take=200`)
+      .then(res => {
+        const list: Category[] = Array.isArray(res) ? res : res?.data ?? [];
+        const map: Record<string, Category> = {};
+        list.forEach(c => { if (c.slug) map[c.slug] = c; });
+        setSlugMap(map);
+      })
+      .catch(e => console.error('[Simulator] 카테고리 로드 실패:', e));
+  }, []);
 
   // 프리셋 적용용 전체 상품 로드 (1회)
   useEffect(() => {

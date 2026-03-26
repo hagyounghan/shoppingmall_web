@@ -1,14 +1,20 @@
+/**
+ * CategoryContext — 홈/카테고리 페이지용
+ *
+ * 앱 시작 시 GET /categories/main 1회 호출
+ * → slug → Category 맵 빌드
+ * → 카테고리 클릭 시 UUID 조회 → 제품 API 호출
+ *
+ * 시뮬레이터는 메인+서브 카테고리가 필요하므로 SimulatorPage에서 별도 로드
+ */
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Category } from '../types';
 import { apiGet } from '../lib/api-client';
 import { API_ENDPOINTS } from '../config/api';
 
 interface CategoryContextValue {
-  /** slug → Category 맵 (전체) */
   slugMap: Record<string, Category>;
-  /** 메인 카테고리 목록 (parentId === null) */
   mainCategories: Category[];
-  /** slug로 카테고리 조회 */
   getBySlug: (slug: string) => Category | undefined;
   loading: boolean;
 }
@@ -26,15 +32,15 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiGet<{ data: Category[] }>(`${API_ENDPOINTS.CATEGORIES}?take=200`)
+    apiGet<Category[]>(API_ENDPOINTS.CATEGORIES_MAIN)
       .then(res => {
-        const list: Category[] = Array.isArray(res) ? res : res?.data ?? [];
+        const list: Category[] = Array.isArray(res) ? res : [];
         const map: Record<string, Category> = {};
         list.forEach(c => { if (c.slug) map[c.slug] = c; });
+        setMainCategories(list);
         setSlugMap(map);
-        setMainCategories(list.filter(c => c.parentId === null));
       })
-      .catch((e) => console.error('[CategoryContext] 카테고리 로드 실패:', e))
+      .catch(e => console.error('[CategoryContext] 메인 카테고리 로드 실패:', e))
       .finally(() => setLoading(false));
   }, []);
 
