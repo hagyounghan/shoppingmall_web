@@ -65,6 +65,19 @@ export const API_ENDPOINTS = {
   // Simulator 추천 세트 (인증 불필요)
   SIMULATOR_PRESETS: (type?: string) => type ? `/simulator/presets?type=${type}` : '/simulator/presets',
 
+  // Inquiries (전체 상품 문의)
+  INQUIRIES: '/inquiries',
+  INQUIRIES_ME: '/inquiries/me',
+
+  // Lectures (강의실)
+  LECTURES: '/lectures',
+  LECTURE_DETAIL: (id: string) => `/lectures/${id}`,
+  LECTURE_TOPICS: '/lectures/topics',
+
+  // FAQs
+  FAQS: '/faqs',
+  FAQ_CATEGORIES: '/faqs/categories',
+
   // Featured Products (소개 장비)
   FEATURED_PRODUCTS: '/featured-products',
   FEATURED_PRODUCT: (id: string) => `/featured-products/${id}`,

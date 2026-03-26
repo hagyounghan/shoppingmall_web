@@ -86,7 +86,7 @@ export function PurchaseConsultingPage() {
               선박 / 용도 / 예산에 맞춘 최적의 장비 구성을 제안해드립니다.
               <br />서비스 이용을 위해 로그인이 필요합니다.
             </p>
-            <Button onClick={() => navigate(ROUTES.LOGIN)}>로그인하기</Button>
+            <Button onClick={() => navigate(ROUTES.LOGIN, { state: { from: ROUTES.PURCHASE_CONSULTING } })}>로그인하기</Button>
           </div>
         </div>
       </div>

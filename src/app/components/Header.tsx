@@ -36,7 +36,7 @@ const navigationItems: NavigationItem[] = [
     subItems: [
       { label: '강의실', to: ROUTES.RESOURCE_LECTURE },
       { label: '문의답변', to: ROUTES.RESOURCE_QNA },
-      { label: '낚시포인트', to: ROUTES.RESOURCE_FISHING_POINTS },
+      { label: 'FAQ', to: ROUTES.RESOURCE_FAQ },
     ]
   },
   { label: '마이페이지', to: ROUTES.MY_PAGE },

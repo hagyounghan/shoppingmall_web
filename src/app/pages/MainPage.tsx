@@ -428,21 +428,21 @@ export function MainPage() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Link
-              to={ROUTES.CONSULTING}
+              to={ROUTES.PURCHASE_CONSULTING}
               className="bg-white p-8 border border-border hover:border-primary transition-colors"
             >
-              <h3 className="text-xl mb-2">전문가 컨설팅</h3>
+              <h3 className="text-xl mb-2">컨설팅</h3>
               <p className="text-muted-foreground">
                 선박 / 용도 / 예산에 맞춘 장비 구성을 추천해드립니다
               </p>
             </Link>
             <Link
-              to={ROUTES.FISHING_POINTS}
+              to={ROUTES.USABILITY_SERVICE}
               className="bg-white p-8 border border-border hover:border-primary transition-colors"
             >
-              <h3 className="text-xl mb-2">낚시포인트 SD</h3>
+              <h3 className="text-xl mb-2">사용성 서비스</h3>
               <p className="text-muted-foreground">
-                검증된 낚시포인트 SD 카드 구매 및 나만의 포인트 등록
+                제품 사용 중 불편사항 및 A/S 신청을 접수해드립니다
               </p>
             </Link>
           </div>

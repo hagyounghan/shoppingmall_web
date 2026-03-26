@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, MessageSquare, MapPin, ArrowRight } from 'lucide-react';
+import { BookOpen, MessageSquare, HelpCircle, ArrowRight } from 'lucide-react';
 import { ROUTES } from '../../constants/routes';
 
 export function ResourceCenterPage() {
@@ -13,16 +13,16 @@ export function ResourceCenterPage() {
         },
         {
             title: '문의답변',
-            description: '자주 묻는 질문 및 문의사항 답변',
+            description: '상품 문의 목록 및 키워드 검색',
             icon: MessageSquare,
             link: ROUTES.RESOURCE_QNA,
             color: 'from-green-500 to-green-600',
         },
         {
-            title: '낚시포인트',
-            description: '검증된 낚시포인트 SD 카드 구매 및 나만의 포인트 등록',
-            icon: MapPin,
-            link: ROUTES.RESOURCE_FISHING_POINTS,
+            title: 'FAQ',
+            description: '자주 묻는 질문 및 답변 모음',
+            icon: HelpCircle,
+            link: ROUTES.RESOURCE_FAQ,
             color: 'from-purple-500 to-purple-600',
         },
     ];

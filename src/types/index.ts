@@ -292,7 +292,54 @@ export interface UsabilityServiceRequest {
 }
 
 // ==========================================
-// 9. 시뮬레이터 (Simulator)
+// 9. 상품 문의 (Inquiry)
+// ==========================================
+export interface InquiryAnswer {
+  id: string;
+  adminId: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InquiryItem {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  title: string;
+  content: string;
+  isAnswered: boolean;
+  answer: InquiryAnswer | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
+// 9-1. 강의 (Lecture) 및 FAQ
+// ==========================================
+export interface Lecture {
+  id: string;
+  title: string;
+  youtubeUrl: string;
+  topic: string | null;
+  views: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Faq {
+  id: string;
+  question: string;
+  answer: string;
+  category: string | null;
+  order: number;
+  createdAt: string;
+}
+
+// ==========================================
+// 10. 시뮬레이터 (Simulator)
 // ==========================================
 export interface SimulatorSetItemData {
   id: string;

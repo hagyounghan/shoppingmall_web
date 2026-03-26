@@ -12,6 +12,7 @@ export const ROUTES = {
   RESOURCE_CENTER: '/resource-center',
   RESOURCE_LECTURE: '/resource-center/lecture',
   RESOURCE_QNA: '/resource-center/qna',
+  RESOURCE_FAQ: '/resource-center/faq',
   RESOURCE_FISHING_POINTS: '/resource-center/fishing-points',
   MY_PAGE: '/mypage',
   LOGIN: '/login',

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ROUTES } from '../../constants/routes';
 import { Button } from '../components/ui/button';
@@ -19,6 +19,8 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string })?.from ?? ROUTES.HOME;
 
   const resetForm = () => {
     setEmail('');
@@ -42,7 +44,7 @@ export function LoginPage() {
       if (authUser.role === 'admin') {
         navigate('/admin');
       } else {
-        navigate(ROUTES.HOME);
+        navigate(from, { replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '로그인에 실패했습니다.');

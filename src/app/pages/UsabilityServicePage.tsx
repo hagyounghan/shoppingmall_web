@@ -107,7 +107,7 @@ export function UsabilityServicePage() {
               구매하신 제품을 더 잘 활용할 수 있도록 사용 방법을 안내해드립니다.
               <br />서비스 이용을 위해 로그인이 필요합니다.
             </p>
-            <Button onClick={() => navigate(ROUTES.LOGIN)}>로그인하기</Button>
+            <Button onClick={() => navigate(ROUTES.LOGIN, { state: { from: ROUTES.USABILITY_SERVICE } })}>로그인하기</Button>
           </div>
         </div>
       </div>
