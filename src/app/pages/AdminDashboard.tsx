@@ -54,6 +54,22 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('ko-KR');
 }
 
+// 시뮬레이터 고정 장비 슬롯 (클라이언트 EQUIPMENT_POSITIONS와 동일)
+const SIM_SLOTS = [
+  { slug: 'radar',          name: '레이더'    },
+  { slug: 'gps-plotter',   name: 'GPS플로터'  },
+  { slug: 'vhf-radio',      name: '무선기'    },
+  { slug: 'trolling-motor', name: '트롤링모터' },
+  { slug: 'transducer',     name: '송수파기'  },
+  { slug: 'autopilot',      name: '자동조타'  },
+] as const;
+
+type SimSlotSlug = typeof SIM_SLOTS[number]['slug'];
+type SimSlotData = { productId: string; productName: string; categoryId: string } | null;
+const EMPTY_SIM_SLOTS: Record<SimSlotSlug, SimSlotData> = Object.fromEntries(
+  SIM_SLOTS.map(s => [s.slug, null])
+) as Record<SimSlotSlug, SimSlotData>;
+
 export default function AdminDashboard() {
   const [currentMenu, setCurrentMenu] = useState('dashboard');
 
@@ -137,11 +153,12 @@ export default function AdminDashboard() {
   const [isAddingSimSet, setIsAddingSimSet] = useState(false);
   const [editingSimSetId, setEditingSimSetId] = useState<string | null>(null);
   const [simSetForm, setSimSetForm] = useState({ type: 'fishing_vessel', name: '', description: '', isActive: true });
-  const [simSetItems, setSimSetItems] = useState<Array<{ productId: string; categoryId: string; productName: string; categoryName: string }>>([]);
+  const [simSlots, setSimSlots] = useState<Record<SimSlotSlug, SimSlotData>>({ ...EMPTY_SIM_SLOTS });
   const [simSetFormLoading, setSimSetFormLoading] = useState(false);
-  const [simItemSearch, setSimItemSearch] = useState('');
-  const [simItemSearchResults, setSimItemSearchResults] = useState<Product[]>([]);
-  const [simItemSearchLoading, setSimItemSearchLoading] = useState(false);
+  const [activeSlot, setActiveSlot] = useState<SimSlotSlug | null>(null);
+  const [slotSearch, setSlotSearch] = useState('');
+  const [slotResults, setSlotResults] = useState<Product[]>([]);
+  const [slotSearchLoading, setSlotSearchLoading] = useState(false);
 
   // 메인/추천 관리 목업 (배너만 유지)
   const banners = [{ id: 1, title: "30년 경력 명장의 선택", subtitle: "최신 해양 장비 특별전", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200", isActive: true }];
@@ -663,63 +680,71 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSimItemSearch = async () => {
-    if (!simItemSearch.trim()) return;
-    setSimItemSearchLoading(true);
+  const handleSlotSearch = async () => {
+    if (!slotSearch.trim() || !activeSlot) return;
+    setSlotSearchLoading(true);
     try {
-      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(simItemSearch)}&take=10`);
-      setSimItemSearchResults(res.data ?? []);
+      const catId = categories.find(c => c.slug === activeSlot)?.id;
+      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(slotSearch)}&take=30`);
+      const all = res.data ?? [];
+      setSlotResults(catId ? all.filter(p => p.categoryId === catId) : all);
     } catch {
-      setSimItemSearchResults([]);
+      setSlotResults([]);
     } finally {
-      setSimItemSearchLoading(false);
+      setSlotSearchLoading(false);
     }
   };
 
-  const addSimItem = (product: Product) => {
-    const categoryName = categories.find(c => c.id === product.categoryId)?.name ?? '';
-    const newItem = { productId: product.id, categoryId: product.categoryId, productName: product.name, categoryName };
-    setSimSetItems(prev => {
-      const existing = prev.findIndex(i => i.categoryId === product.categoryId);
-      if (existing !== -1) {
-        // 같은 카테고리 슬롯 → 교체
-        const next = [...prev];
-        next[existing] = newItem;
-        return next;
-      }
-      return [...prev, newItem];
-    });
-    setSimItemSearch('');
-    setSimItemSearchResults([]);
+  const assignToSlot = (slug: SimSlotSlug, product: Product) => {
+    const catId = categories.find(c => c.slug === slug)?.id ?? product.categoryId;
+    setSimSlots(prev => ({ ...prev, [slug]: { productId: product.id, productName: product.name, categoryId: catId } }));
+    setActiveSlot(null);
+    setSlotSearch('');
+    setSlotResults([]);
   };
 
-  const removeSimItem = (productId: string) => {
-    setSimSetItems(prev => prev.filter(i => i.productId !== productId));
+  const clearSlot = (slug: SimSlotSlug) => {
+    setSimSlots(prev => ({ ...prev, [slug]: null }));
+    if (activeSlot === slug) { setActiveSlot(null); setSlotSearch(''); setSlotResults([]); }
   };
 
   const startEditSimSet = (set: SimulatorSet) => {
     setEditingSimSetId(set.id);
     setSimSetForm({ type: set.type, name: set.name, description: set.description ?? '', isActive: set.isActive });
-    setSimSetItems((set.items || []).map(item => ({
-      productId: item.productId,
-      categoryId: item.categoryId,
-      productName: item.productName ?? products.find(p => p.id === item.productId)?.name ?? '(이름 없음)',
-      categoryName: item.categoryName ?? categories.find(c => c.id === item.categoryId)?.name ?? '',
-    })));
+    const newSlots = { ...EMPTY_SIM_SLOTS };
+    for (const item of set.items || []) {
+      const cat = categories.find(c => c.id === item.categoryId);
+      const slot = SIM_SLOTS.find(s => s.slug === cat?.slug);
+      if (slot) {
+        newSlots[slot.slug] = {
+          productId: item.productId,
+          productName: item.productName ?? '(이름 없음)',
+          categoryId: item.categoryId,
+        };
+      }
+    }
+    setSimSlots(newSlots);
+    setActiveSlot(null);
+    setSlotSearch('');
+    setSlotResults([]);
     setIsAddingSimSet(false);
   };
 
   const resetSimSetForm = () => {
     setSimSetForm({ type: 'fishing_vessel', name: '', description: '', isActive: true });
-    setSimSetItems([]);
-    setSimItemSearch('');
-    setSimItemSearchResults([]);
+    setSimSlots({ ...EMPTY_SIM_SLOTS });
+    setActiveSlot(null);
+    setSlotSearch('');
+    setSlotResults([]);
     setIsAddingSimSet(false);
     setEditingSimSetId(null);
   };
 
   const handleSaveSimSet = async () => {
-    if (!simSetForm.name || simSetItems.length === 0) {
+    const filledItems = SIM_SLOTS
+      .filter(s => simSlots[s.slug] !== null)
+      .map(s => ({ productId: simSlots[s.slug]!.productId, categoryId: simSlots[s.slug]!.categoryId }));
+    if (!simSetForm.name || filledItems.length === 0) {
       alert('세트명과 장비를 1개 이상 입력해주세요.');
       return;
     }
@@ -730,7 +755,7 @@ export default function AdminDashboard() {
         name: simSetForm.name,
         description: simSetForm.description || undefined,
         isActive: simSetForm.isActive,
-        items: simSetItems.map(i => ({ productId: i.productId, categoryId: i.categoryId })),
+        items: filledItems,
       };
       if (editingSimSetId) {
         await apiPatch(`${API_ENDPOINTS.SIMULATOR_SETS}/${editingSimSetId}`, payload);
@@ -1245,65 +1270,67 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* 장비 추가 */}
+                  {/* 장비 슬롯 (6개 고정) */}
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-2 block">구성 장비 <span className="text-red-500">*</span></label>
-                    <div className="flex gap-2 mb-2">
-                      <input type="text" placeholder="장비명으로 검색..." value={simItemSearch}
-                        onChange={e => setSimItemSearch(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleSimItemSearch()}
-                        className="flex-1 p-2 border rounded text-sm"/>
-                      <button onClick={handleSimItemSearch} disabled={simItemSearchLoading}
-                        className="bg-slate-700 text-white px-3 py-2 rounded text-sm flex items-center gap-1 disabled:opacity-50">
-                        {simItemSearchLoading ? <Loader2 size={14} className="animate-spin"/> : <Search size={14}/>} 검색
-                      </button>
-                    </div>
-                    {simItemSearchResults.length > 0 && (
-                      <div className="border rounded-lg overflow-hidden mb-2 max-h-40 overflow-y-auto">
-                        {simItemSearchResults.map(p => {
-                          const isSame = simSetItems.some(i => i.productId === p.id);
-                          const sameCategory = !isSame && simSetItems.some(i => i.categoryId === p.categoryId);
-                          const catName = categories.find(c => c.id === p.categoryId)?.name;
-                          return (
-                            <div key={p.id} className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 border-b last:border-0">
-                              <div>
-                                <span className="text-sm font-medium">{p.name}</span>
-                                {catName && <span className="ml-2 text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{catName}</span>}
-                                {sameCategory && <span className="ml-2 text-[10px] text-orange-500">→ 교체됨</span>}
-                              </div>
-                              <button onClick={() => addSimItem(p)}
-                                disabled={isSame}
-                                className="text-xs bg-orange-500 text-white px-2 py-1 rounded disabled:opacity-40 disabled:bg-slate-300 shrink-0">
-                                {isSame ? '추가됨' : sameCategory ? '교체' : '추가'}
+                    <div className="space-y-2">
+                      {SIM_SLOTS.map(slot => {
+                        const assigned = simSlots[slot.slug];
+                        const isActive = activeSlot === slot.slug;
+                        return (
+                          <div key={slot.slug} className="border rounded-lg overflow-hidden">
+                            {/* 슬롯 행 */}
+                            <div className="flex items-center gap-2 px-3 py-2 bg-white">
+                              <span className="shrink-0 text-[11px] font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded w-[72px] text-center">{slot.name}</span>
+                              <span className={`flex-1 text-sm truncate ${assigned ? 'font-medium text-slate-800' : 'text-slate-300 italic'}`}>
+                                {assigned ? assigned.productName : '비어있음'}
+                              </span>
+                              <button
+                                onClick={() => { setActiveSlot(isActive ? null : slot.slug); setSlotSearch(''); setSlotResults([]); }}
+                                className="text-xs px-2 py-1 rounded border border-slate-300 hover:border-blue-400 hover:text-blue-600 shrink-0">
+                                {assigned ? '교체' : '선택'}
                               </button>
+                              {assigned && (
+                                <button onClick={() => clearSlot(slot.slug)} className="text-red-300 hover:text-red-500 shrink-0"><X size={14}/></button>
+                              )}
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {simSetItems.length > 0 && (
-                      <div className="bg-slate-50 rounded-lg p-3 space-y-1">
-                        {simSetItems.map(item => {
-                          return (
-                            <div key={item.productId} className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-2 min-w-0">
-                                {item.categoryName && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">{item.categoryName}</span>}
-                                <span className="font-medium truncate">{item.productName}</span>
+                            {/* 슬롯별 검색 (활성 시) */}
+                            {isActive && (
+                              <div className="border-t bg-slate-50 p-2">
+                                <div className="flex gap-1 mb-1">
+                                  <input type="text" placeholder={`${slot.name} 장비 검색...`} value={slotSearch}
+                                    onChange={e => setSlotSearch(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleSlotSearch()}
+                                    className="flex-1 px-2 py-1 border rounded text-xs" autoFocus/>
+                                  <button onClick={handleSlotSearch} disabled={slotSearchLoading}
+                                    className="bg-slate-700 text-white px-2 py-1 rounded text-xs flex items-center gap-1 disabled:opacity-50">
+                                    {slotSearchLoading ? <Loader2 size={12} className="animate-spin"/> : <Search size={12}/>}
+                                  </button>
+                                </div>
+                                {slotResults.length > 0 && (
+                                  <div className="max-h-36 overflow-y-auto border rounded bg-white">
+                                    {slotResults.map(p => (
+                                      <div key={p.id} className="flex items-center justify-between px-2 py-1.5 hover:bg-slate-50 border-b last:border-0">
+                                        <span className="text-xs">{p.name}</span>
+                                        <button onClick={() => assignToSlot(slot.slug, p)}
+                                          className="text-[11px] bg-orange-500 text-white px-2 py-0.5 rounded shrink-0">선택</button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {slotResults.length === 0 && slotSearch && !slotSearchLoading && (
+                                  <p className="text-[11px] text-slate-400 text-center py-1">검색 결과 없음</p>
+                                )}
                               </div>
-                              <button onClick={() => removeSimItem(item.productId)}
-                                className="text-red-400 hover:text-red-600 shrink-0 ml-2"><X size={14}/></button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {simSetItems.length === 0 && (
-                      <p className="text-xs text-slate-400 text-center py-3 border border-dashed rounded-lg">장비를 검색하여 추가하세요</p>
-                    )}
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div className="flex gap-2">
-                    <button onClick={handleSaveSimSet} disabled={simSetFormLoading || !simSetForm.name || simSetItems.length === 0}
+                    <button onClick={handleSaveSimSet} disabled={simSetFormLoading || !simSetForm.name}
                       className="flex-1 bg-orange-500 text-white py-2 rounded-lg font-bold disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
                       <Save size={15}/> {simSetFormLoading ? '저장 중...' : (editingSimSetId ? '수정 완료' : '세트 저장')}
                     </button>
@@ -1336,25 +1363,21 @@ export default function AdminDashboard() {
                             <span className="font-bold text-base">{set.name}</span>
                           </div>
                           {set.description && <p className="text-xs text-slate-400 mb-2">{set.description}</p>}
-                          <div className="space-y-1 mt-1">
-                            {(set.items || []).length === 0
-                              ? <span className="text-xs text-slate-300">장비 없음</span>
-                              : Object.entries(
-                                  (set.items || []).reduce((acc, item) => {
-                                    const cName = item.categoryName ?? categories.find(c => c.id === item.categoryId)?.name ?? item.categoryId.slice(0, 8);
-                                    if (!acc[cName]) acc[cName] = [];
-                                    acc[cName].push(item);
-                                    return acc;
-                                  }, {} as Record<string, typeof set.items>)
-                                ).map(([cName, items]) => (
-                                  <div key={cName} className="flex items-center gap-2 text-[11px]">
-                                    <span className="shrink-0 bg-blue-50 text-blue-600 font-bold px-1.5 py-0.5 rounded min-w-[70px] text-center">{cName}</span>
-                                    <span className="text-slate-700">
-                                      {items.map(i => i.productName ?? '(이름 없음)').join(', ')}
-                                    </span>
-                                  </div>
-                                ))
-                            }
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1">
+                            {SIM_SLOTS.map(slot => {
+                              const item = (set.items || []).find(i => {
+                                const cat = categories.find(c => c.id === i.categoryId);
+                                return cat?.slug === slot.slug;
+                              });
+                              return (
+                                <div key={slot.slug} className="flex items-center gap-1.5 text-[11px]">
+                                  <span className="shrink-0 bg-blue-50 text-blue-600 font-bold px-1.5 py-0.5 rounded w-[58px] text-center">{slot.name}</span>
+                                  <span className={item ? 'text-slate-700 truncate' : 'text-slate-300 italic'}>
+                                    {item ? (item.productName ?? '(이름 없음)') : '비어있음'}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                         <div className="flex gap-1 shrink-0">
