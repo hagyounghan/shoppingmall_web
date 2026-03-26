@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { CATEGORIES } from '../../constants/categories';
 import { Product } from '../../types'; 
-import { productApi } from '../../api/productApi';
+import { getCategories, getProducts, getTopProducts } from '../../api/productApi';
 
 export function CategoryPage() {
   const { categoryId: categorySlug } = useParams(); 
@@ -21,10 +21,10 @@ export function CategoryPage() {
         setLoading(true);
         
         // 1. 서버 카테고리 목록 가져오기
-        const allCategories = await productApi.getCategories();
-        
+        const allCategories = await getCategories();
+
         // 2. 현재 페이지의 Slug와 서버의 카테고리 매칭
-        const realCategory = allCategories.find((c: any) => 
+        const realCategory = allCategories.find((c: any) =>
           c.name.includes(categoryName) || categoryName.includes(c.name)
         );
 
@@ -32,8 +32,8 @@ export function CategoryPage() {
 
         // 3. 병렬 데이터 로드
         const [productsResponse, topProductsData] = await Promise.all([
-          productApi.getProducts(realId),
-          productApi.getTopProducts(5)
+          getProducts({ categoryId: realId }),
+          getTopProducts(5)
         ]);
 
         // 🟢 데이터 설정 (응답 구조에 맞춰 안전하게 처리)

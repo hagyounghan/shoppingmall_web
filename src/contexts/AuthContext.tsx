@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AuthUser } from '../types';
+import { AuthUser, AuthResponse } from '../types';
+import { apiPost, apiGet, ApiClientError } from '../lib/api-client';
+import { API_ENDPOINTS } from '../config/api';
 
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  register: (email: string, password: string, name: string, phone?: string) => Promise<void>;
+  logout: () => Promise<void>;
   loading: boolean;
 }
 
@@ -14,63 +17,93 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_TOKEN_KEY = 'auth_token';
 const AUTH_USER_KEY = 'auth_user';
 
+function saveAuth(token: string, user: AuthUser) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    phone: user.phone,
+    fishingPoints: user.fishingPoints,
+  }));
+}
+
+function clearAuth() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 로컬 스토리지에서 인증 정보 복원
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     const userStr = localStorage.getItem(AUTH_USER_KEY);
-    
-    if (token && userStr) {
-      try {
-        const userData = JSON.parse(userStr);
-        setUser({ ...userData, token });
-      } catch (error) {
-        // 잘못된 데이터면 삭제
-        localStorage.removeItem(AUTH_TOKEN_KEY);
-        localStorage.removeItem(AUTH_USER_KEY);
-      }
+
+    if (!token || !userStr) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    // 토큰 유효성 서버에서 확인
+    apiGet<AuthUser>(API_ENDPOINTS.ME)
+      .then((me) => {
+        setUser({ ...me, token });
+      })
+      .catch((err) => {
+        if (err instanceof ApiClientError && err.status === 401) {
+          clearAuth();
+        } else {
+          // 네트워크 오류 등: 로컬 정보로 복원
+          try {
+            const userData = JSON.parse(userStr);
+            setUser({ ...userData, token });
+          } catch {
+            clearAuth();
+          }
+        }
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      // TODO: 실제 API 호출로 교체
-      // 임시 로그인 로직
-      if (email && password) {
-        const mockUser: AuthUser = {
-          id: '1',
-          email,
-          name: email.split('@')[0],
-          token: `mock_token_${Date.now()}`,
-        };
-        
-        localStorage.setItem(AUTH_TOKEN_KEY, mockUser.token);
-        localStorage.setItem(AUTH_USER_KEY, JSON.stringify({
-          id: mockUser.id,
-          email: mockUser.email,
-          name: mockUser.name,
-        }));
-        
-        setUser(mockUser);
-      } else {
-        throw new Error('이메일과 비밀번호를 입력해주세요.');
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('로그인에 실패했습니다.');
-    }
+    const res = await apiPost<AuthResponse>(API_ENDPOINTS.LOGIN, { email, password });
+    const authUser: AuthUser = {
+      id: res.user.id,
+      email: res.user.email,
+      name: res.user.name,
+      phone: res.user.phone,
+      fishingPoints: res.user.fishingPoints,
+      token: res.token,
+    };
+    saveAuth(res.token, authUser);
+    setUser(authUser);
   };
 
-  const logout = () => {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
-    setUser(null);
+  const register = async (email: string, password: string, name: string, phone?: string) => {
+    const res = await apiPost<AuthResponse>(API_ENDPOINTS.REGISTER, { email, password, name, phone });
+    const authUser: AuthUser = {
+      id: res.user.id,
+      email: res.user.email,
+      name: res.user.name,
+      phone: res.user.phone,
+      fishingPoints: res.user.fishingPoints,
+      token: res.token,
+    };
+    saveAuth(res.token, authUser);
+    setUser(authUser);
+  };
+
+  const logout = async () => {
+    try {
+      await apiPost(API_ENDPOINTS.LOGOUT);
+    } catch {
+      // 실패해도 로컬 정리
+    } finally {
+      clearAuth();
+      setUser(null);
+    }
   };
 
   return (
@@ -79,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isAuthenticated: !!user,
         login,
+        register,
         logout,
         loading,
       }}
@@ -95,4 +129,3 @@ export function useAuth() {
   }
   return context;
 }
-

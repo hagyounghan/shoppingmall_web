@@ -1,97 +1,26 @@
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ProductCard } from "../components/ProductCard";
 import { CATEGORIES } from "../../constants/categories";
 import { ROUTES } from "../../constants/routes";
 import { Product } from "../../types";
-import { Crown, TrendingUp, Wallet, Sparkles, ArrowRight } from "lucide-react";
+import { Crown, TrendingUp, Wallet, ArrowRight } from "lucide-react";
 import { formatPrice } from "../../utils/format";
+import { getTopProducts } from "../../api/productApi";
 
 export function MainPage() {
   const navigate = useNavigate();
+  const [bestProducts, setBestProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    getTopProducts(5)
+      .then((products) => setBestProducts(products))
+      .catch(() => setBestProducts([]));
+  }, []);
 
   const handleSetClick = (setId: 'premium' | 'value' | 'budget') => {
     navigate(`${ROUTES.SIMULATOR}?set=${setId}`);
   };
-
-  const bestProducts: Product[] = [
-    {
-      id: "1",
-      name: "GARMIN GPSMAP 8612 12인치 GPS 플로터",
-      price: 3450000,
-      image:
-        "https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400",
-      tag: "BEST",
-    },
-    {
-      id: "2",
-      name: "LOWRANCE HDS-12 LIVE 어군탐지기",
-      price: 2890000,
-      image:
-        "https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400",
-      tag: "NEW",
-    },
-    {
-      id: "3",
-      name: "FURUNO DRS4W 4kW 레이더",
-      price: 4250000,
-      image:
-        "https://images.unsplash.com/photo-1758248421325-6f3a1d92075a?w=400",
-      tag: "SALE",
-    },
-    {
-      id: "4",
-      name: "ICOM IC-M506 고정형 VHF 무선기",
-      price: 890000,
-      image:
-        "https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400",
-    },
-    {
-      id: "5",
-      name: "SIMRAD NSS12 EVO3 멀티터치 디스플레이",
-      price: 5180000,
-      image:
-        "https://images.unsplash.com/photo-1719448081072-8090553a77fe?w=400",
-      tag: "BEST",
-    },
-  ];
-
-  const recommendedProducts: Product[] = [
-    {
-      id: "6",
-      name: "GARMIN STRIKER Plus 7sv 어군탐지기",
-      price: 1250000,
-      image:
-        "https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400",
-    },
-    {
-      id: "7",
-      name: "LOWRANCE Elite FS 9 디스플레이",
-      price: 1890000,
-      image:
-        "https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400",
-    },
-    {
-      id: "8",
-      name: "FURUNO GP-39 GPS 수신기",
-      price: 650000,
-      image:
-        "https://images.unsplash.com/photo-1758248421325-6f3a1d92075a?w=400",
-    },
-    {
-      id: "9",
-      name: "STANDARD HORIZON GX2400 VHF",
-      price: 720000,
-      image:
-        "https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400",
-    },
-    {
-      id: "10",
-      name: "RAYMARINE Axiom+ 12 디스플레이",
-      price: 4850000,
-      image:
-        "https://images.unsplash.com/photo-1719448081072-8090553a77fe?w=400",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -138,22 +67,24 @@ export function MainPage() {
         </div>
       </section>
 
-      {/* Top Products
-      <section className="py-16 bg-secondary">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl mb-8 text-center">인기 제품 TOP 5</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            {bestProducts.slice(0, 5).map((product, index) => (
-              <div key={product.id} className="relative">
-                <div className="absolute -top-2 -left-2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm z-10">
-                  {index + 1}
+      {/* Top Products */}
+      {bestProducts.length > 0 && (
+        <section className="py-16 bg-secondary">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl mb-8 text-center">인기 제품 TOP 5</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+              {bestProducts.slice(0, 5).map((product, index) => (
+                <div key={product.id} className="relative">
+                  <div className="absolute -top-2 -left-2 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold text-sm z-10">
+                    {index + 1}
+                  </div>
+                  <ProductCard {...product} />
                 </div>
-                <ProductCard {...product} />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section> */}
+        </section>
+      )}
 
       {/* Equipment Sets */}
       <section className="py-16">

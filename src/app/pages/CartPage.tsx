@@ -2,49 +2,33 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
 import { formatPrice } from '../../utils/format';
 import { Button } from '../components/ui/button';
-import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react';
-import {
-  Alert,
-  AlertDescription,
-} from '../components/ui/alert';
-import { CartItem } from '../../types';
-
-// 덤프 데이터
-const DUMMY_CART_ITEMS: CartItem[] = [
-  {
-    id: 'cart_1',
-    productId: '1',
-    name: 'GARMIN GPSMAP 8612 12인치 GPS 플로터',
-    price: 3450000,
-    image: 'https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400',
-    quantity: 1,
-  },
-  {
-    id: 'cart_2',
-    productId: '2',
-    name: 'LOWRANCE HDS-12 LIVE 어군탐지기',
-    price: 2890000,
-    image: 'https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400',
-    quantity: 2,
-  },
-  {
-    id: 'cart_3',
-    productId: '5',
-    name: 'ICOM IC-M506 고정형 VHF 무선기',
-    price: 890000,
-    image: 'https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400',
-    quantity: 1,
-  },
-];
+import { Trash2, Plus, Minus } from 'lucide-react';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { ShoppingBag } from 'lucide-react';
+import { useCart } from '../../contexts/CartContext';
 
 export function CartPage() {
-  // 덤프 데이터 사용
-  const items = DUMMY_CART_ITEMS;
-  
-  // 덤프 데이터용 계산 함수
-  const getDummyTotalPrice = () => {
-    return items.reduce((total, item) => total + item.price * item.quantity, 0);
-  };
+  const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCart();
+  const totalPrice = getTotalPrice();
+
+  if (items.length === 0) {
+    return (
+      <div className="min-h-screen bg-secondary py-12 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <h1 className="text-3xl font-bold mb-8">장바구니</h1>
+          <Alert>
+            <ShoppingBag className="h-4 w-4" />
+            <AlertDescription>
+              장바구니가 비어 있습니다.
+              <Link to={ROUTES.HOME} className="ml-2 text-primary hover:underline">
+                쇼핑하러 가기
+              </Link>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-secondary py-12 px-4">
@@ -90,10 +74,7 @@ export function CartPage() {
                           variant="outline"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => {
-                            // 덤프 데이터에서는 동작하지 않음 (표시용)
-                            console.log('수량 감소:', item.productId);
-                          }}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
@@ -104,10 +85,7 @@ export function CartPage() {
                           variant="outline"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => {
-                            // 덤프 데이터에서는 동작하지 않음 (표시용)
-                            console.log('수량 증가:', item.productId);
-                          }}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
@@ -121,10 +99,7 @@ export function CartPage() {
                           variant="ghost"
                           size="icon"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            // 덤프 데이터에서는 동작하지 않음 (표시용)
-                            console.log('삭제:', item.productId);
-                          }}
+                          onClick={() => removeItem(item.id)}
                         >
                           <Trash2 className="h-5 w-5" />
                         </Button>
@@ -138,10 +113,7 @@ export function CartPage() {
             <div className="flex justify-end">
               <Button
                 variant="outline"
-                onClick={() => {
-                  // 덤프 데이터에서는 동작하지 않음 (표시용)
-                  console.log('전체 삭제');
-                }}
+                onClick={clearCart}
                 className="text-destructive hover:text-destructive"
               >
                 전체 삭제
@@ -155,29 +127,27 @@ export function CartPage() {
               <h2 className="text-xl font-bold mb-4">주문 요약</h2>
 
               <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-muted-foreground">ㄹ
+                <div className="flex justify-between text-muted-foreground">
                   <span>상품 금액</span>
-                  <span>{formatPrice(getDummyTotalPrice())}</span>
+                  <span>{formatPrice(totalPrice)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>배송비</span>
                   <span>
-                    {getDummyTotalPrice() >= 50000 ? '무료' : formatPrice(3000)}
+                    {totalPrice >= 50000 ? '무료' : formatPrice(3000)}
                   </span>
                 </div>
                 <div className="border-t border-border pt-3 flex justify-between text-lg font-bold">
                   <span>총 결제금액</span>
                   <span className="text-primary">
-                    {formatPrice(
-                      getDummyTotalPrice() + (getDummyTotalPrice() >= 50000 ? 0 : 3000)
-                    )}
+                    {formatPrice(totalPrice + (totalPrice >= 50000 ? 0 : 3000))}
                   </span>
                 </div>
               </div>
 
-              {getDummyTotalPrice() < 50000 && (
+              {totalPrice < 50000 && (
                 <div className="mb-4 p-3 bg-secondary rounded text-sm text-muted-foreground">
-                  {formatPrice(50000 - getDummyTotalPrice())}원 더 구매하면 무료배송!
+                  {formatPrice(50000 - totalPrice)}원 더 구매하면 무료배송!
                 </div>
               )}
 
@@ -198,4 +168,3 @@ export function CartPage() {
     </div>
   );
 }
-

@@ -1,37 +1,38 @@
-import axios from 'axios';
-import { Product, PaginatedProducts } from '../types';
+import { apiGet } from '../lib/api-client';
+import { API_ENDPOINTS } from '../config/api';
+import { Product, ProductDetail, PaginatedProducts, Category } from '../types';
 
-const API_BASE_URL = 'http://192.168.10.135:3500'; // http 프로토콜 추가
+export async function getProducts(params?: {
+  page?: number;
+  take?: number;
+  categoryId?: string;
+  brandId?: string;
+  search?: string;
+  tag?: string;
+}): Promise<PaginatedProducts> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set('page', String(params.page));
+  if (params?.take) query.set('take', String(params.take));
+  if (params?.categoryId) query.set('categoryId', params.categoryId);
+  if (params?.brandId) query.set('brandId', params.brandId);
+  if (params?.search) query.set('search', params.search);
+  if (params?.tag) query.set('tag', params.tag);
+  const qs = query.toString();
+  return apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}${qs ? `?${qs}` : ''}`);
+}
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-});
+export async function getTopProducts(limit = 5): Promise<Product[]> {
+  const data = await apiGet<Product[] | { data: Product[] }>(
+    `${API_ENDPOINTS.TOP_PRODUCTS}?limit=${limit}`
+  );
+  return Array.isArray(data) ? data : data.data || [];
+}
 
-export const productApi = {
-  // 제품 목록 조회 (카테고리별 페이지네이션)
-  getProducts: async (categoryId?: string) => {
-    const response = await apiClient.get<PaginatedProducts>('/products', {
-      params: { categoryId, take: 20 }
-    });
-    // PaginatedProducts 인터페이스 구조에 따라 response.data를 그대로 반환합니다.
-    return response.data;
-  },
+export async function getProductDetail(id: string): Promise<ProductDetail> {
+  return apiGet<ProductDetail>(API_ENDPOINTS.PRODUCT_DETAIL(id));
+}
 
-  // 카테고리 목록 조회
-  getCategories: async () => {
-    const response = await apiClient.get<any>('/categories');
-    // 배열인지 확인 후 데이터 반환
-    return Array.isArray(response.data) ? response.data : response.data.data || [];
-  },
-
-  // 인기 제품 조회 (에러 발생 지점 수정)
-  getTopProducts: async (limit: number = 5) => {
-    const response = await apiClient.get<any>('/products/top', {
-      params: { limit, sortBy: 'salesCount' }
-    });
-    
-    // 서버 응답이 { data: [] } 형태이거나 바로 [] 형태인 경우를 모두 대응합니다.
-    const data = Array.isArray(response.data) ? response.data : response.data.data || [];
-    return data;
-  }
-};
+export async function getCategories(): Promise<Category[]> {
+  const data = await apiGet<Category[] | { data: Category[] }>(API_ENDPOINTS.CATEGORIES);
+  return Array.isArray(data) ? data : data.data || [];
+}

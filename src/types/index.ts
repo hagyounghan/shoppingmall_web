@@ -83,6 +83,16 @@ export interface AuthResponse {
   token: string;
 }
 
+// AuthContext에서 사용하는 로그인 유저 타입 (token 포함)
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  fishingPoints?: number;
+  token: string;
+}
+
 // ==========================================
 // 4. 카테고리 및 브랜드 (Category & Brand)
 // ==========================================
@@ -123,5 +133,26 @@ export interface WishlistItem {
   productId: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// UI에서 사용하는 장바구니 아이템 (product join 포함)
+export interface CartItemUI {
+  id: string;
+  productId: string;
+  optionId?: string;
+  quantity: number;
+  name: string;
+  price: number;
+  image: string;
+}
+
+// UI에서 사용하는 찜 목록 아이템 (product join 포함)
+export interface WishlistItemUI {
+  id: string;
+  productId: string;
+  name: string;
+  price: number;
+  image: string;
+  tag?: 'BEST' | 'NEW' | 'SALE' | null;
 }
 

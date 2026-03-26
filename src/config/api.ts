@@ -29,5 +29,13 @@ export const API_ENDPOINTS = {
   // Cart
   CART: '/cart',
   CART_ITEM: (itemId: string) => `/cart/${itemId}`,
+
+  // Categories
+  CATEGORIES: '/categories',
+
+  // Wishlist
+  WISHLIST: '/wishlist',
+  WISHLIST_ITEM: (itemId: string) => `/wishlist/${itemId}`,
+  WISHLIST_PRODUCT: (productId: string) => `/wishlist/product/${productId}`,
 } as const;
 

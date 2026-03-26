@@ -1,12 +1,28 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { CartItem, Product } from '../types';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { CartItemUI, Product } from '../types';
+import { apiGet, apiPost, apiPatch, apiDelete } from '../lib/api-client';
+import { API_ENDPOINTS } from '../config/api';
+import { useAuth } from './AuthContext';
+
+interface CartItemServerResponse {
+  id: string;
+  productId: string;
+  optionId?: string;
+  quantity: number;
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    image: string;
+  };
+}
 
 interface CartContextType {
-  items: CartItem[];
-  addItem: (product: Product, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  clearCart: () => void;
+  items: CartItemUI[];
+  addItem: (product: Product, quantity?: number, optionId?: string) => Promise<void>;
+  removeItem: (id: string) => Promise<void>;
+  updateQuantity: (id: string, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
   getTotalPrice: () => number;
   getTotalItems: () => number;
 }
@@ -15,93 +31,174 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = 'cart_items';
 
+function loadLocalCart(): CartItemUI[] {
+  try {
+    const saved = localStorage.getItem(CART_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalCart(items: CartItemUI[]) {
+  localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+}
+
+function serverToUI(item: CartItemServerResponse): CartItemUI {
+  return {
+    id: item.id,
+    productId: item.productId,
+    optionId: item.optionId,
+    quantity: item.quantity,
+    name: item.product.name,
+    price: item.product.price,
+    image: item.product.image,
+  };
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const { isAuthenticated } = useAuth();
+  const [items, setItems] = useState<CartItemUI[]>([]);
+  const prevAuth = useRef(isAuthenticated);
 
+  // 인증 상태 변경 시 장바구니 동기화
   useEffect(() => {
-    // 로컬 스토리지에서 장바구니 복원
-    const savedCart = localStorage.getItem(CART_STORAGE_KEY);
-    if (savedCart) {
-      try {
-        setItems(JSON.parse(savedCart));
-      } catch (error) {
-        localStorage.removeItem(CART_STORAGE_KEY);
-      }
+    const wasAuthenticated = prevAuth.current;
+    prevAuth.current = isAuthenticated;
+
+    if (isAuthenticated) {
+      // 로그인 전환: 로컬 항목을 서버에 병합 후 서버 목록 fetch
+      const localItems = loadLocalCart();
+      const mergeAndFetch = async () => {
+        for (const item of localItems) {
+          try {
+            await apiPost(API_ENDPOINTS.CART, {
+              productId: item.productId,
+              quantity: item.quantity,
+              optionId: item.optionId,
+            });
+          } catch {
+            // 이미 있는 항목 등 무시
+          }
+        }
+        if (localItems.length > 0) {
+          localStorage.removeItem(CART_STORAGE_KEY);
+        }
+        try {
+          const serverItems = await apiGet<CartItemServerResponse[]>(API_ENDPOINTS.CART);
+          setItems(serverItems.map(serverToUI));
+        } catch {
+          setItems([]);
+        }
+      };
+      mergeAndFetch();
+    } else if (wasAuthenticated && !isAuthenticated) {
+      // 로그아웃: 서버 상태 비우고 로컬 복원
+      setItems(loadLocalCart());
+    } else if (!isAuthenticated) {
+      // 초기 비로그인
+      setItems(loadLocalCart());
     }
-  }, []);
+  }, [isAuthenticated]);
 
-  useEffect(() => {
-    // 장바구니 변경 시 로컬 스토리지에 저장
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
-
-  const addItem = (product: Product, quantity: number = 1) => {
-    setItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.productId === product.id);
-      
-      if (existingItem) {
-        // 이미 장바구니에 있으면 수량 증가
-        return prevItems.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      } else {
-        // 새로 추가
-        const newItem: CartItem = {
-          id: `cart_${product.id}_${Date.now()}`,
-          productId: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          quantity,
-        };
-        return [...prevItems, newItem];
+  const addItem = async (product: Product, quantity = 1, optionId?: string) => {
+    if (isAuthenticated) {
+      try {
+        await apiPost(API_ENDPOINTS.CART, { productId: product.id, quantity, optionId });
+        const serverItems = await apiGet<CartItemServerResponse[]>(API_ENDPOINTS.CART);
+        setItems(serverItems.map(serverToUI));
+      } catch {
+        // 실패 시 로컬 처리
       }
-    });
+    } else {
+      setItems((prev) => {
+        const existing = prev.find((i) => i.productId === product.id && i.optionId === optionId);
+        let next: CartItemUI[];
+        if (existing) {
+          next = prev.map((i) =>
+            i.productId === product.id && i.optionId === optionId
+              ? { ...i, quantity: i.quantity + quantity }
+              : i
+          );
+        } else {
+          next = [
+            ...prev,
+            {
+              id: `local_${product.id}_${Date.now()}`,
+              productId: product.id,
+              optionId,
+              quantity,
+              name: product.name,
+              price: product.price,
+              image: product.image,
+            },
+          ];
+        }
+        saveLocalCart(next);
+        return next;
+      });
+    }
   };
 
-  const removeItem = (productId: string) => {
-    setItems((prevItems) => prevItems.filter((item) => item.productId !== productId));
+  const removeItem = async (id: string) => {
+    if (isAuthenticated) {
+      try {
+        await apiDelete(API_ENDPOINTS.CART_ITEM(id));
+        setItems((prev) => prev.filter((i) => i.id !== id));
+      } catch {
+        // 실패 무시
+      }
+    } else {
+      setItems((prev) => {
+        const next = prev.filter((i) => i.id !== id);
+        saveLocalCart(next);
+        return next;
+      });
+    }
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = async (id: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(productId);
+      await removeItem(id);
       return;
     }
-    
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item
-      )
-    );
+    if (isAuthenticated) {
+      try {
+        await apiPatch(API_ENDPOINTS.CART_ITEM(id), { quantity });
+        setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity } : i)));
+      } catch {
+        // 실패 무시
+      }
+    } else {
+      setItems((prev) => {
+        const next = prev.map((i) => (i.id === id ? { ...i, quantity } : i));
+        saveLocalCart(next);
+        return next;
+      });
+    }
   };
 
-  const clearCart = () => {
+  const clearCart = async () => {
+    if (isAuthenticated) {
+      try {
+        // 서버에서 각 항목 삭제
+        await Promise.all(items.map((i) => apiDelete(API_ENDPOINTS.CART_ITEM(i.id))));
+      } catch {
+        // 실패 무시
+      }
+    } else {
+      localStorage.removeItem(CART_STORAGE_KEY);
+    }
     setItems([]);
-    localStorage.removeItem(CART_STORAGE_KEY);
   };
 
-  const getTotalPrice = () => {
-    return items.reduce((total, item) => total + item.price * item.quantity, 0);
-  };
+  const getTotalPrice = () => items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  const getTotalItems = () => {
-    return items.reduce((total, item) => total + item.quantity, 0);
-  };
+  const getTotalItems = () => items.reduce((sum, i) => sum + i.quantity, 0);
 
   return (
     <CartContext.Provider
-      value={{
-        items,
-        addItem,
-        removeItem,
-        updateQuantity,
-        clearCart,
-        getTotalPrice,
-        getTotalItems,
-      }}
+      value={{ items, addItem, removeItem, updateQuantity, clearCart, getTotalPrice, getTotalItems }}
     >
       {children}
     </CartContext.Provider>
@@ -115,4 +212,3 @@ export function useCart() {
   }
   return context;
 }
-
