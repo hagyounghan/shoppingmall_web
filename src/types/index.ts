@@ -292,7 +292,19 @@ export interface UsabilityServiceRequest {
 }
 
 // ==========================================
-// 9. 상품 문의 (Inquiry)
+// 9. 공지사항 (Notice)
+// ==========================================
+export interface Notice {
+  id: string;
+  title: string;
+  content: string;
+  isImportant: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================
+// 9-1. 상품 문의 (Inquiry)
 // ==========================================
 export interface InquiryAnswer {
   id: string;

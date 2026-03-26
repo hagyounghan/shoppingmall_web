@@ -31,12 +31,13 @@ const navigationItems: NavigationItem[] = [
   { label: '사용성 서비스', to: ROUTES.USABILITY_SERVICE },
   { label: '컨설팅', to: ROUTES.PURCHASE_CONSULTING },
   {
-    label: '자료실',
-    to: ROUTES.RESOURCE_CENTER,
+    label: '고객지원',
+    to: ROUTES.SUPPORT,
     subItems: [
-      { label: '강의실', to: ROUTES.RESOURCE_LECTURE },
-      { label: '문의답변', to: ROUTES.RESOURCE_QNA },
-      { label: 'FAQ', to: ROUTES.RESOURCE_FAQ },
+      { label: '공지사항', to: ROUTES.SUPPORT_NOTICE },
+      { label: '강의실', to: ROUTES.SUPPORT_LECTURE },
+      { label: '문의답변', to: ROUTES.SUPPORT_QNA },
+      { label: 'FAQ', to: ROUTES.SUPPORT_FAQ },
     ]
   },
   { label: '마이페이지', to: ROUTES.MY_PAGE },

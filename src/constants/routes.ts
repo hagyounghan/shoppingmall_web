@@ -9,11 +9,18 @@ export const ROUTES = {
   SIMULATOR: '/simulator',
   USABILITY_SERVICE: '/usability-service',
   PURCHASE_CONSULTING: '/purchase-consulting',
-  RESOURCE_CENTER: '/resource-center',
-  RESOURCE_LECTURE: '/resource-center/lecture',
-  RESOURCE_QNA: '/resource-center/qna',
-  RESOURCE_FAQ: '/resource-center/faq',
-  RESOURCE_FISHING_POINTS: '/resource-center/fishing-points',
+  // 고객지원 (구 자료실)
+  SUPPORT: '/support',
+  SUPPORT_NOTICE: '/support/notice',
+  SUPPORT_LECTURE: '/support/lecture',
+  SUPPORT_QNA: '/support/qna',
+  SUPPORT_FAQ: '/support/faq',
+  // 구 경로 유지 (하위 호환)
+  RESOURCE_CENTER: '/support',
+  RESOURCE_LECTURE: '/support/lecture',
+  RESOURCE_QNA: '/support/qna',
+  RESOURCE_FAQ: '/support/faq',
+  RESOURCE_FISHING_POINTS: '/support/fishing-points',
   MY_PAGE: '/mypage',
   LOGIN: '/login',
   CART: '/cart',
@@ -22,4 +29,3 @@ export const ROUTES = {
   SERVICE_REQUEST: '/service',
   CONSULTING_BOOKING: '/consulting-booking',
 } as const;
-

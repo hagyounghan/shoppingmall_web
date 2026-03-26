@@ -3,7 +3,8 @@ import { MainPage } from '../app/pages/MainPage';
 import { ProductDetailPage } from '../app/pages/ProductDetailPage';
 import { UsabilityServicePage } from '../app/pages/UsabilityServicePage';
 import { PurchaseConsultingPage } from '../app/pages/PurchaseConsultingPage';
-import { ResourceCenterPage } from '../app/pages/ResourceCenterPage';
+import { SupportCenterPage } from '../app/pages/SupportCenterPage';
+import { NoticePage } from '../app/pages/NoticePage';
 import { ResourceLecturePage } from '../app/pages/ResourceLecturePage';
 import { ResourceQnAPage } from '../app/pages/ResourceQnAPage';
 import { ResourceFaqPage } from '../app/pages/ResourceFaqPage';
@@ -35,11 +36,12 @@ export function AppRoutes() {
       {/* 서비스 및 컨설팅 관련 */}
       <Route path={ROUTES.USABILITY_SERVICE} element={<UsabilityServicePage />} />
       <Route path={ROUTES.PURCHASE_CONSULTING} element={<PurchaseConsultingPage />} />
-      {/* 자료실 관련 */}
-      <Route path={ROUTES.RESOURCE_CENTER} element={<ResourceCenterPage />} />
-      <Route path={ROUTES.RESOURCE_LECTURE} element={<ResourceLecturePage />} />
-      <Route path={ROUTES.RESOURCE_QNA} element={<ResourceQnAPage />} />
-      <Route path={ROUTES.RESOURCE_FAQ} element={<ResourceFaqPage />} />
+      {/* 고객지원 */}
+      <Route path={ROUTES.SUPPORT} element={<SupportCenterPage />} />
+      <Route path={ROUTES.SUPPORT_NOTICE} element={<NoticePage />} />
+      <Route path={ROUTES.SUPPORT_LECTURE} element={<ResourceLecturePage />} />
+      <Route path={ROUTES.SUPPORT_QNA} element={<ResourceQnAPage />} />
+      <Route path={ROUTES.SUPPORT_FAQ} element={<ResourceFaqPage />} />
       <Route path={ROUTES.RESOURCE_FISHING_POINTS} element={<FishingPointsPage />} />
       
       {/* 브랜드 및 정보 관련 */}
