@@ -53,12 +53,12 @@ export function MainPage() {
               <Link
                 key={category.id}
                 to={category.link}
-                className="flex flex-col items-center gap-3 p-4 bg-white border border-border hover:border-primary transition-colors group"
+                className="aspect-square flex flex-col items-center justify-center gap-2 bg-white border border-border hover:border-primary hover:shadow-md transition-all group rounded-lg"
               >
-                <div className="w-12 h-12 flex items-center justify-center bg-secondary group-hover:bg-primary group-hover:text-white transition-colors">
-                  <category.icon className="w-6 h-6" />
+                <div className="w-14 h-14 rounded-full flex items-center justify-center bg-secondary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <category.icon className="w-7 h-7" />
                 </div>
-                <span className="text-sm text-center">
+                <span className="text-xs text-center px-1 leading-tight">
                   {category.name}
                 </span>
               </Link>
