@@ -80,3 +80,4 @@ tsconfig.tsbuildinfo
 *.key
 *.cert
 *.crt
+src/.env
