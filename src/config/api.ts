@@ -61,4 +61,9 @@ export const API_ENDPOINTS = {
   SIMULATOR_SET: (id: string) => `/simulator/sets/${id}`,
   // Simulator 추천 세트 (인증 불필요)
   SIMULATOR_PRESETS: (type?: string) => type ? `/simulator/presets?type=${type}` : '/simulator/presets',
+
+  // Featured Products (소개 장비)
+  FEATURED_PRODUCTS: '/featured-products',
+  FEATURED_PRODUCT: (id: string) => `/featured-products/${id}`,
+  FEATURED_PRODUCTS_REORDER: '/featured-products/reorder',
 } as const;

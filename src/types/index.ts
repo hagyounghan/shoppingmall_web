@@ -300,6 +300,17 @@ export interface PaginatedSimulatorSets {
 }
 
 // ==========================================
+// 11. 소개 장비
+// ==========================================
+export interface FeaturedProduct {
+  id: string;
+  productId: string;
+  order: number;
+  product: Product;
+  createdAt: string;
+}
+
+// ==========================================
 // 10. 시뮬레이터 UI 전용 타입
 // ==========================================
 export interface EquipmentPosition {

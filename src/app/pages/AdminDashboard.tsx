@@ -3,11 +3,11 @@ import {
   LayoutDashboard, Package, MessageCircle, Megaphone,
   Plus, Edit, Trash2, Ship, User,
   X, Image as ImageIcon, Layout, Settings, Sparkles, Save,
-  ShoppingCart, ChevronDown
+  ShoppingCart, ChevronDown, Star, ChevronUp, Search, Loader2
 } from 'lucide-react';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
-import { Product, Brand, Category, PaginatedProducts, OrderResponse, ORDER_STATUS_LABELS, OrderStatus, PAYMENT_METHOD_LABELS } from '../../types';
+import { Product, Brand, Category, PaginatedProducts, OrderResponse, ORDER_STATUS_LABELS, OrderStatus, PAYMENT_METHOD_LABELS, FeaturedProduct } from '../../types';
 import { formatPrice } from '../../utils/format';
 
 // --- 타입 정의 ---
@@ -77,6 +77,13 @@ export default function AdminDashboard() {
   const [ordersError, setOrdersError] = useState('');
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
 
+  // 소개 장비
+  const [featuredProducts, setFeaturedProducts] = useState<FeaturedProduct[]>([]);
+  const [featuredLoading, setFeaturedLoading] = useState(false);
+  const [featuredSearch, setFeaturedSearch] = useState('');
+  const [featuredSearchResults, setFeaturedSearchResults] = useState<Product[]>([]);
+  const [featuredSearchLoading, setFeaturedSearchLoading] = useState(false);
+
   // 기타 목업
   const [banners] = useState(INITIAL_BANNERS);
   const [recSets] = useState(INITIAL_SETS);
@@ -111,6 +118,9 @@ export default function AdminDashboard() {
     }
     if (currentMenu === 'orders') {
       loadOrders();
+    }
+    if (currentMenu === 'featured') {
+      loadFeaturedProducts();
     }
   }, [currentMenu]);
 
@@ -224,6 +234,71 @@ export default function AdminDashboard() {
     }
   };
 
+  // 소개 장비 목록 로드
+  const loadFeaturedProducts = async () => {
+    setFeaturedLoading(true);
+    try {
+      const res = await apiGet<FeaturedProduct[]>(API_ENDPOINTS.FEATURED_PRODUCTS);
+      setFeaturedProducts(Array.isArray(res) ? res : []);
+    } catch {
+      setFeaturedProducts([]);
+    } finally {
+      setFeaturedLoading(false);
+    }
+  };
+
+  // 소개 장비 제품 검색
+  const handleFeaturedSearch = async () => {
+    if (!featuredSearch.trim()) return;
+    setFeaturedSearchLoading(true);
+    try {
+      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(featuredSearch)}&take=10`);
+      setFeaturedSearchResults(res.data ?? []);
+    } catch {
+      setFeaturedSearchResults([]);
+    } finally {
+      setFeaturedSearchLoading(false);
+    }
+  };
+
+  // 소개 장비 추가
+  const handleAddFeatured = async (productId: string) => {
+    try {
+      await apiPost(API_ENDPOINTS.FEATURED_PRODUCTS, { productId });
+      await loadFeaturedProducts();
+      setFeaturedSearchResults([]);
+      setFeaturedSearch('');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '소개 장비 등록에 실패했습니다.');
+    }
+  };
+
+  // 소개 장비 삭제
+  const handleRemoveFeatured = async (id: string, name: string) => {
+    if (!confirm(`"${name}"을(를) 소개 장비에서 삭제하시겠습니까?`)) return;
+    try {
+      await apiDelete(API_ENDPOINTS.FEATURED_PRODUCT(id));
+      await loadFeaturedProducts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '삭제에 실패했습니다.');
+    }
+  };
+
+  // 소개 장비 순서 이동 (위/아래)
+  const handleMoveFeatured = async (index: number, direction: 'up' | 'down') => {
+    const newList = [...featuredProducts];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newList.length) return;
+    [newList[index], newList[targetIndex]] = [newList[targetIndex], newList[index]];
+    setFeaturedProducts(newList);
+    try {
+      await apiPatch(API_ENDPOINTS.FEATURED_PRODUCTS_REORDER, { ids: newList.map(f => f.id) });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '순서 변경에 실패했습니다.');
+      await loadFeaturedProducts();
+    }
+  };
+
   const startEditing = (product: Product) => {
     setEditingId(product.id);
     setEditForm({
@@ -253,6 +328,7 @@ export default function AdminDashboard() {
           <MenuButton icon={<Package size={20}/>} label="장비/상품 관리" isActive={currentMenu === 'products'} onClick={() => setCurrentMenu('products')} />
           <MenuButton icon={<ShoppingCart size={20}/>} label="주문 관리" isActive={currentMenu === 'orders'} onClick={() => setCurrentMenu('orders')} />
           <MenuButton icon={<Layout size={20}/>} label="메인/추천 관리" isActive={currentMenu === 'main_mgmt'} onClick={() => setCurrentMenu('main_mgmt')} />
+          <MenuButton icon={<Star size={20}/>} label="소개 장비 관리" isActive={currentMenu === 'featured'} onClick={() => setCurrentMenu('featured')} />
           <MenuButton icon={<MessageCircle size={20}/>} label="컨설팅 신청 내역" isActive={currentMenu === 'consulting'} onClick={() => setCurrentMenu('consulting')} />
           <MenuButton icon={<Megaphone size={20}/>} label="공지/자료실 관리" isActive={currentMenu === 'notices'} onClick={() => setCurrentMenu('notices')} />
         </nav>
@@ -460,6 +536,177 @@ export default function AdminDashboard() {
                 </table>
               )}
             </div>
+          </div>
+        )}
+
+        {/* [소개 장비 관리] */}
+        {currentMenu === 'featured' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-black flex items-center gap-2">
+                <Star className="text-amber-500 fill-amber-500" size={22} /> 소개 장비 관리
+              </h2>
+              <span className="text-sm text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+                {featuredProducts.length} / 5 등록됨
+              </span>
+            </div>
+
+            {/* 현재 등록된 소개 장비 목록 */}
+            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+              <div className="px-6 py-4 border-b bg-amber-50">
+                <h3 className="font-bold text-amber-900">현재 소개 장비 목록</h3>
+              </div>
+              {featuredLoading ? (
+                <div className="p-8 flex items-center justify-center text-slate-400">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> 불러오는 중...
+                </div>
+              ) : featuredProducts.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">
+                  <Star size={32} className="mx-auto mb-2 opacity-20" />
+                  <p>등록된 소개 장비가 없습니다.</p>
+                  <p className="text-xs mt-1">아래 검색창에서 제품을 추가해주세요.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 border-b text-sm font-bold">
+                    <tr>
+                      <th className="p-4 text-slate-500 w-12">순서</th>
+                      <th className="p-4 text-slate-500">장비명</th>
+                      <th className="p-4 text-slate-500">가격</th>
+                      <th className="p-4 text-center text-slate-500">순서 변경</th>
+                      <th className="p-4 text-center text-slate-500">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {featuredProducts.map((item, index) => (
+                      <tr key={item.id} className="border-b hover:bg-slate-50 transition text-sm">
+                        <td className="p-4">
+                          <div className="w-7 h-7 bg-amber-500 text-white rounded-full flex items-center justify-center font-bold text-xs">
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            {item.product.image && (
+                              <img
+                                src={item.product.image}
+                                alt={item.product.name}
+                                className="w-10 h-10 object-cover rounded border"
+                              />
+                            )}
+                            <span className="font-medium">{item.product.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 font-black text-blue-600">{formatPrice(item.product.price)}</td>
+                        <td className="p-4 text-center">
+                          <div className="flex justify-center gap-1">
+                            <button
+                              onClick={() => handleMoveFeatured(index, 'up')}
+                              disabled={index === 0}
+                              className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20"
+                              title="위로 이동"
+                            >
+                              <ChevronUp size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleMoveFeatured(index, 'down')}
+                              disabled={index === featuredProducts.length - 1}
+                              className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20"
+                              title="아래로 이동"
+                            >
+                              <ChevronDown size={16} />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <button
+                            onClick={() => handleRemoveFeatured(item.id, item.product.name)}
+                            className="text-slate-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* 제품 검색 및 추가 */}
+            {featuredProducts.length < 5 && (
+              <div className="bg-white rounded-xl shadow-sm border p-6 space-y-4">
+                <h3 className="font-bold text-slate-700">소개 장비 추가</h3>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="장비명으로 검색..."
+                    value={featuredSearch}
+                    onChange={(e) => setFeaturedSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleFeaturedSearch()}
+                    className="flex-1 p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <button
+                    onClick={handleFeaturedSearch}
+                    disabled={featuredSearchLoading || !featuredSearch.trim()}
+                    className="bg-amber-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-amber-600 disabled:opacity-50"
+                  >
+                    {featuredSearchLoading ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Search size={16} />
+                    )}
+                    검색
+                  </button>
+                </div>
+
+                {featuredSearchResults.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-slate-50 px-4 py-2 text-xs font-bold text-slate-500 border-b">
+                      검색 결과 ({featuredSearchResults.length}건) — 추가 버튼을 클릭하세요
+                    </div>
+                    <table className="w-full text-left text-sm">
+                      <tbody>
+                        {featuredSearchResults.map(p => {
+                          const alreadyAdded = featuredProducts.some(f => f.productId === p.id);
+                          return (
+                            <tr key={p.id} className="border-b hover:bg-slate-50 transition">
+                              <td className="p-3">
+                                <div className="flex items-center gap-3">
+                                  {p.image && (
+                                    <img src={p.image} alt={p.name} className="w-8 h-8 object-cover rounded border" />
+                                  )}
+                                  <span className="font-medium">{p.name}</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-blue-600 font-bold">{formatPrice(p.price)}</td>
+                              <td className="p-3 text-center">
+                                {alreadyAdded ? (
+                                  <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full font-bold">등록됨</span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleAddFeatured(p.id)}
+                                    className="text-xs bg-amber-500 text-white px-3 py-1 rounded-full hover:bg-amber-600 flex items-center gap-1 mx-auto"
+                                  >
+                                    <Plus size={12} /> 추가
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {featuredProducts.length >= 5 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-700">
+                소개 장비는 최대 5개까지 등록할 수 있습니다. 기존 항목을 삭제한 후 새 장비를 추가할 수 있습니다.
+              </div>
+            )}
           </div>
         )}
 

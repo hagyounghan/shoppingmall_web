@@ -5,6 +5,7 @@ import { ProductCard } from '../components/ProductCard';
 import { Product, PaginatedProducts } from '../../types';
 import { apiGet } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
+import { FeaturedProductsSection } from '../components/FeaturedProductsSection';
 
 interface BrandInfo {
   id: string;
@@ -101,6 +102,8 @@ export function BrandDetailPage() {
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-6xl mx-auto">
+
+          <FeaturedProductsSection />
 
           {/* 상품 수 */}
           <div className="mb-6 flex items-center justify-between">

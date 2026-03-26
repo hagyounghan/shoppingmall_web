@@ -3,10 +3,10 @@ import { useParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Product } from '../../types';
 import { useCategories } from '../../contexts/CategoryContext';
-import { getProductsByMainCategory, getTopProducts } from '../../api/productApi';
 import { apiGet } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
 import { PaginatedProducts } from '../../types';
+import { FeaturedProductsSection } from '../components/FeaturedProductsSection';
 
 export function CategoryPage() {
   // URL 파라미터가 slug (예: 'gps-plotter')
@@ -14,7 +14,6 @@ export function CategoryPage() {
   const { getBySlug, slugMap } = useCategories();
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [topProducts, setTopProducts] = useState<(Product & { rank: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,22 +25,12 @@ export function CategoryPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-
-        // 메인 카테고리(parentId=null) → /products/main-category/:id
-        // 서브 카테고리(parentId≠null) → /products/category/:id
         const endpoint = category.parentId === null
           ? API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(category.id)
           : API_ENDPOINTS.PRODUCTS_BY_CATEGORY(category.id);
-
-        const [categoryProducts, topProductsData] = await Promise.all([
-          apiGet<PaginatedProducts>(endpoint).then(res => Array.isArray(res) ? res : res?.data ?? []),
-          getTopProducts(5),
-        ]);
-
+        const categoryProducts = await apiGet<PaginatedProducts>(endpoint)
+          .then(res => Array.isArray(res) ? res : res?.data ?? []);
         setProducts(categoryProducts);
-        setTopProducts(Array.isArray(topProductsData)
-          ? topProductsData.map((p, i) => ({ ...p, rank: i + 1 }))
-          : []);
       } catch (error) {
         console.error('데이터 로드 실패:', error);
       } finally {
@@ -64,22 +53,7 @@ export function CategoryPage() {
             <p className="text-muted-foreground">{categoryName} 카테고리의 제품을 확인하세요</p>
           </div>
 
-          {/* 인기 제품 TOP 5 */}
-          {topProducts.length > 0 && (
-            <section className="mb-12 bg-gray-50 py-8 px-6 rounded-lg">
-              <h2 className="text-3xl mb-8 text-center font-bold">인기 제품 TOP 5</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                {topProducts.map((product) => (
-                  <div key={product.id} className="relative">
-                    <div className="absolute -top-2 -left-2 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm z-10">
-                      {product.rank}
-                    </div>
-                    <ProductCard {...product} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          <FeaturedProductsSection />
 
           {/* 전체 제품 목록 */}
           <div className="mb-8 flex items-center justify-between border-b pb-4">
