@@ -48,17 +48,17 @@ export function MainPage() {
       {/* Categories */}
       <section className="py-16 bg-secondary">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-3 md:grid-cols-5 gap-3 mx-auto" style={{ maxWidth: '840px' }}>
+          <div className="grid grid-cols-4 md:grid-cols-9 gap-4">
             {CATEGORIES.map((category) => (
               <Link
                 key={category.id}
                 to={category.link}
-                className="aspect-square flex flex-col items-center justify-center gap-2 p-2 bg-white border border-border hover:border-primary hover:shadow-md transition-all group rounded-lg"
+                className="flex flex-col items-center gap-3 p-4 bg-white border border-border hover:border-primary transition-colors group"
               >
-                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-secondary group-hover:bg-primary group-hover:text-white transition-colors">
+                <div className="w-12 h-12 flex items-center justify-center bg-secondary group-hover:bg-primary group-hover:text-white transition-colors">
                   <category.icon className="w-6 h-6" />
                 </div>
-                <span className="text-sm font-medium text-center leading-tight">
+                <span className="text-sm text-center">
                   {category.name}
                 </span>
               </Link>
