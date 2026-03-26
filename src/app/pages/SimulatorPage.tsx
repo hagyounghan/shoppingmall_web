@@ -274,7 +274,7 @@ export function SimulatorPage() {
     .map(eq => eq.product!);
 
   const filteredProducts = useMemo(() => {
-    let products = apiProducts.length > 0 ? apiProducts : (selectedPosition ? SAMPLE_PRODUCTS[selectedPosition.category] || [] : ALL_PRODUCTS);
+    let products = apiProducts.length > 0 ? apiProducts : [];
     if (selectedBrand !== 'all') products = products.filter(p => p.name.toUpperCase().includes(selectedBrand.toUpperCase()));
     if (searchQuery) products = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return products;
