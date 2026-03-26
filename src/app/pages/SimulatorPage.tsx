@@ -1,17 +1,20 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { formatPrice } from '../../utils/format';
-import { Product, EquipmentPosition, SelectedEquipment } from '../../types';
+import { Product, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets } from '../../types';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Search, X, Crown, TrendingUp, Wallet, Sparkles, Ship, Anchor, Save, Loader2 } from 'lucide-react';
+import {
+  Search, X, Crown, TrendingUp, Wallet, Sparkles, Ship, Anchor,
+  Save, Loader2, Trash2
+} from 'lucide-react';
 import { BRANDS } from '../../constants/brands';
-import { apiGet, apiPost } from '../../lib/api-client';
+import { apiGet, apiPost, apiDelete } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { PaginatedProducts } from '../../types';
 
-// 전자장비 위치 정의 (이미지 변경에 따라 x, y 좌표를 미세 조정하세요)
+// 장비 위치 정의
 const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
   { id: 'gps-plotter', name: 'GPS 플로터', x: 45, y: 25, category: 'GPS' },
   { id: 'radar', name: '레이더', x: 50, y: 15, category: 'Radar' },
@@ -36,17 +39,16 @@ const ALL_PRODUCTS: Product[] = [
 ];
 
 const SAMPLE_PRODUCTS: Record<string, Product[]> = {
-  'GPS': ALL_PRODUCTS.filter(p => p.id === '1' || p.id === '2' || p.id === '3'),
-  'Radar': ALL_PRODUCTS.filter(p => p.id === '4' || p.id === '5'),
-  'VHF': ALL_PRODUCTS.filter(p => p.id === '6' || p.id === '7'),
+  'GPS': ALL_PRODUCTS.filter(p => ['1','2','3'].includes(p.id)),
+  'Radar': ALL_PRODUCTS.filter(p => ['4','5'].includes(p.id)),
+  'VHF': ALL_PRODUCTS.filter(p => ['6','7'].includes(p.id)),
   'TrollingMotor': ALL_PRODUCTS.filter(p => p.id === '8'),
-  'Fishfinder': ALL_PRODUCTS.filter(p => p.id === '9' || p.id === '10'),
+  'Fishfinder': ALL_PRODUCTS.filter(p => ['9','10'].includes(p.id)),
   'Autopilot': ALL_PRODUCTS.filter(p => p.id === '11'),
 };
 
 const EQUIPMENT_SETS = {
   premium: {
-    id: 'premium',
     name: '명장세트',
     description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트',
     equipment: [
@@ -58,7 +60,6 @@ const EQUIPMENT_SETS = {
     ],
   },
   value: {
-    id: 'value',
     name: '가성비세트',
     description: '합리적인 가격의 실용적인 세트',
     equipment: [
@@ -68,7 +69,6 @@ const EQUIPMENT_SETS = {
     ],
   },
   budget: {
-    id: 'budget',
     name: '가심비세트',
     description: '경제적인 가격의 기본 세트',
     equipment: [
@@ -78,20 +78,29 @@ const EQUIPMENT_SETS = {
   },
 };
 
-type BoatType = 'fishing' | 'leisure' | 'low';
+const MAX_SETS = 3;
+
+function toApiType(boatType: 'fishing' | 'leisure'): SimulatorType {
+  return boatType === 'fishing' ? 'fishing_vessel' : 'leisure';
+}
 
 export function SimulatorPage() {
   const [searchParams] = useSearchParams();
-  const { isAuthenticated } = useAuth();
-  const [boatType, setBoatType] = useState<BoatType>('leisure');
+  const { isAuthenticated, user } = useAuth();
+  const [boatType, setBoatType] = useState<'fishing' | 'leisure'>('leisure');
 
-  // API에서 로드한 실제 상품
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
   const [apiLoading, setApiLoading] = useState(false);
 
-  // 세트 저장
+  // 내 저장 세트
+  const [mySets, setMySets] = useState<{ fishing_vessel: SimulatorSet[]; leisure: SimulatorSet[] }>({
+    fishing_vessel: [],
+    leisure: [],
+  });
+  const [setsLoading, setSetsLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
   const [selectedEquipment, setSelectedEquipment] = useState<Record<string, SelectedEquipment>>(
     EQUIPMENT_POSITIONS.reduce((acc, pos) => {
       acc[pos.id] = { positionId: pos.id, product: null };
@@ -102,28 +111,59 @@ export function SimulatorPage() {
   const [includeInstallation, setIncludeInstallation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // API 상품 로드
+  // 실제 상품 로드
   useEffect(() => {
     setApiLoading(true);
     apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=100`)
-      .then(res => setApiProducts(res.data))
+      .then(res => setApiProducts(Array.isArray(res) ? res : res?.data ?? []))
       .catch(() => setApiProducts([]))
       .finally(() => setApiLoading(false));
   }, []);
 
+  // 내 세트 로드 (로그인 시)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setMySets({ fishing_vessel: [], leisure: [] });
+      return;
+    }
+    const loadSets = async () => {
+      setSetsLoading(true);
+      try {
+        const [fishingRes, leisureRes] = await Promise.all([
+          apiGet<PaginatedSimulatorSets>(`${API_ENDPOINTS.SIMULATOR_SETS}?type=fishing_vessel&take=10`),
+          apiGet<PaginatedSimulatorSets>(`${API_ENDPOINTS.SIMULATOR_SETS}?type=leisure&take=10`),
+        ]);
+        const fishingSets = Array.isArray(fishingRes) ? fishingRes : fishingRes?.data ?? [];
+        const leisureSets = Array.isArray(leisureRes) ? leisureRes : leisureRes?.data ?? [];
+        // 내 세트만 필터
+        setMySets({
+          fishing_vessel: fishingSets.filter((s: SimulatorSet) => s.userId === user?.id).slice(0, MAX_SETS),
+          leisure: leisureSets.filter((s: SimulatorSet) => s.userId === user?.id).slice(0, MAX_SETS),
+        });
+      } catch {
+        setMySets({ fishing_vessel: [], leisure: [] });
+      } finally {
+        setSetsLoading(false);
+      }
+    };
+    loadSets();
+  }, [isAuthenticated, user?.id]);
+
+  // preset set 적용
   useEffect(() => {
     const setParam = searchParams.get('set');
-    if (setParam && (setParam === 'premium' || setParam === 'value' || setParam === 'budget')) {
+    if (setParam && setParam in EQUIPMENT_SETS) {
       handleSetSelect(setParam as keyof typeof EQUIPMENT_SETS);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [searchParams]);
 
+  const currentTypeSets = mySets[toApiType(boatType)];
+  const canSaveMore = currentTypeSets.length < MAX_SETS;
+
   const handlePositionClick = (position: EquipmentPosition) => {
     setSelectedPosition(position);
-    setSelectedCategory(position.category);
     setTimeout(() => {
       document.getElementById('product-selection-area')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -131,56 +171,37 @@ export function SimulatorPage() {
 
   const handleProductSelect = (product: Product) => {
     if (selectedPosition) {
-      setSelectedEquipment((prev) => ({
+      setSelectedEquipment(prev => ({
         ...prev,
         [selectedPosition.id]: { positionId: selectedPosition.id, product },
       }));
       setSelectedPosition(null);
-      setSelectedCategory('all');
     }
   };
 
   const handleSetSelect = (setId: keyof typeof EQUIPMENT_SETS) => {
-    // 세트에 따라 배경 이미지 타입 변경
-    if (setId === 'budget') setBoatType('low');
-    else if (setId === 'premium') setBoatType('fishing');
-    
     const set = EQUIPMENT_SETS[setId];
-    const newSelection: Record<string, SelectedEquipment> = { ...selectedEquipment };
-
-    Object.keys(newSelection).forEach((key) => {
-      newSelection[key] = { positionId: key, product: null };
+    const newSelection: Record<string, SelectedEquipment> = {};
+    EQUIPMENT_POSITIONS.forEach(pos => {
+      newSelection[pos.id] = { positionId: pos.id, product: null };
     });
-
-    set.equipment.forEach((eq) => {
-      const position = EQUIPMENT_POSITIONS.find((p) => p.id === eq.positionId);
+    set.equipment.forEach(eq => {
+      const position = EQUIPMENT_POSITIONS.find(p => p.id === eq.positionId);
       if (position) {
-        const product = SAMPLE_PRODUCTS[position.category]?.find((p) => p.id === eq.productId);
-        if (product) {
-          newSelection[eq.positionId] = { positionId: eq.positionId, product };
-        }
+        const product = SAMPLE_PRODUCTS[position.category]?.find(p => p.id === eq.productId);
+        if (product) newSelection[eq.positionId] = { positionId: eq.positionId, product };
       }
     });
-
     setSelectedEquipment(newSelection);
   };
 
   const handleRemoveEquipment = (positionId: string) => {
-    setSelectedEquipment((prev) => ({
+    setSelectedEquipment(prev => ({
       ...prev,
       [positionId]: { positionId, product: null },
     }));
   };
 
-  const calculateTotal = (): number => {
-    const equipmentTotal = Object.values(selectedEquipment).reduce(
-      (sum, eq) => sum + (eq.product?.price || 0),
-      0
-    );
-    return equipmentTotal + (includeInstallation ? 300000 : 0);
-  };
-
-  // 세트 저장 핸들러
   const handleSaveSet = async () => {
     if (!isAuthenticated) {
       alert('로그인 후 세트를 저장할 수 있습니다.');
@@ -191,8 +212,13 @@ export function SimulatorPage() {
       alert('장비를 선택한 후 저장하세요.');
       return;
     }
+    if (!canSaveMore) {
+      alert(`${boatType === 'fishing' ? '어선용' : '레저용'} 세트는 최대 ${MAX_SETS}개까지 저장할 수 있습니다.`);
+      return;
+    }
 
-    const setName = `나의 세트 (${new Date().toLocaleDateString('ko-KR')})`;
+    const apiType = toApiType(boatType);
+    const setName = `${boatType === 'fishing' ? '어선용' : '레저용'} 세트 ${currentTypeSets.length + 1}`;
     const items = selectedList.map(eq => ({
       productId: eq.product!.id,
       categoryId: eq.product!.categoryId || eq.positionId,
@@ -200,56 +226,70 @@ export function SimulatorPage() {
 
     setSaveLoading(true);
     try {
-      await apiPost(API_ENDPOINTS.SIMULATOR_SETS, {
+      const saved = await apiPost<SimulatorSet>(API_ENDPOINTS.SIMULATOR_SETS, {
+        type: apiType,
         name: setName,
-        description: `총 ${selectedList.length}개 장비, 견적 ${formatPrice(calculateTotal())}`,
+        description: `총 ${selectedList.length}개 장비 · ${formatPrice(calculateTotal())}`,
         items,
       });
+      setMySets(prev => ({
+        ...prev,
+        [apiType]: [...prev[apiType], saved],
+      }));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
-      alert('세트 저장에 실패했습니다. 실제 등록된 상품으로 세트를 구성해야 저장됩니다.');
+      alert('세트 저장에 실패했습니다. 실제 등록된 상품으로 구성해야 저장됩니다.');
     } finally {
       setSaveLoading(false);
     }
   };
 
+  const handleDeleteSet = async (setId: string, type: SimulatorType) => {
+    if (!confirm('저장된 세트를 삭제하시겠습니까?')) return;
+    try {
+      await apiDelete(API_ENDPOINTS.SIMULATOR_SET(setId));
+      setMySets(prev => ({
+        ...prev,
+        [type]: prev[type].filter(s => s.id !== setId),
+      }));
+    } catch {
+      alert('삭제에 실패했습니다.');
+    }
+  };
+
+  const calculateTotal = () =>
+    Object.values(selectedEquipment).reduce((sum, eq) => sum + (eq.product?.price || 0), 0)
+    + (includeInstallation ? 300000 : 0);
+
+  const selectedProducts = Object.values(selectedEquipment)
+    .filter(eq => eq.product !== null)
+    .map(eq => eq.product!);
+
   const filteredProducts = useMemo(() => {
-    let products = apiProducts.length > 0
-      ? (selectedPosition ? apiProducts : apiProducts)
-      : (selectedPosition ? SAMPLE_PRODUCTS[selectedPosition.category] || [] : ALL_PRODUCTS);
+    let products = apiProducts.length > 0 ? apiProducts : (selectedPosition ? SAMPLE_PRODUCTS[selectedPosition.category] || [] : ALL_PRODUCTS);
     if (selectedBrand !== 'all') products = products.filter(p => p.name.toUpperCase().includes(selectedBrand.toUpperCase()));
     if (searchQuery) products = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return products;
   }, [selectedBrand, searchQuery, selectedPosition, apiProducts]);
 
-  const selectedProducts = Object.values(selectedEquipment)
-    .filter((eq) => eq.product !== null)
-    .map((eq) => eq.product!);
-
-  // 보트 타입에 따른 이미지 경로 결정
-  const getBoatImagePath = () => {
-    if (boatType === 'low') return '/low.png';
-    if (boatType === 'fishing') return '/fishing.png';
-    return '/leisure.png';
-  };
-
   return (
     <div className="min-h-screen bg-secondary">
       <div className="container mx-auto px-4 py-8">
-        {/* 선박 타입 선택 */}
-        <div className="mb-8 flex items-center justify-center gap-4">
+
+        {/* 선박 타입 탭 */}
+        <div className="mb-8 flex items-center justify-center">
           <div className="bg-white rounded-lg p-1 shadow-sm border border-border">
             <div className="flex gap-2">
               <button
                 onClick={() => setBoatType('fishing')}
-                className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${boatType === 'fishing' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground'}`}
+                className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${boatType === 'fishing' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <Anchor className="w-5 h-5" /> 어선용
               </button>
               <button
                 onClick={() => setBoatType('leisure')}
-                className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${boatType === 'leisure' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground'}`}
+                className={`px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 ${boatType === 'leisure' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <Ship className="w-5 h-5" /> 레저용
               </button>
@@ -257,13 +297,18 @@ export function SimulatorPage() {
           </div>
         </div>
 
-        {/* 세트 버튼 영역 (명장, 가성비, 가심비) */}
+        {/* 추천 세트 */}
         <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <button onClick={() => handleSetSelect('premium')} className="group relative bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
+          <button onClick={() => handleSetSelect('premium')} className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shadow-lg"><Crown className="w-6 h-6 text-white" /></div>
-                <div><h3 className="text-xl font-bold text-amber-900">명장세트</h3><p className="text-xs text-amber-700 mt-1">프리미엄 구성</p></div>
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <Crown className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-amber-900">명장세트</h3>
+                  <p className="text-xs text-amber-700 mt-1">프리미엄 구성</p>
+                </div>
               </div>
               <Sparkles className="w-5 h-5 text-amber-500" />
             </div>
@@ -271,11 +316,16 @@ export function SimulatorPage() {
             <p className="text-lg font-bold text-amber-900">{formatPrice(9440000)}</p>
           </button>
 
-          <button onClick={() => handleSetSelect('value')} className="group relative bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
+          <button onClick={() => handleSetSelect('value')} className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center shadow-lg"><TrendingUp className="w-6 h-6 text-white" /></div>
-                <div><h3 className="text-xl font-bold text-blue-900">가성비세트</h3><p className="text-xs text-blue-700 mt-1">추천 구성</p></div>
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-blue-900">가성비세트</h3>
+                  <p className="text-xs text-blue-700 mt-1">추천 구성</p>
+                </div>
               </div>
               <Sparkles className="w-5 h-5 text-blue-500" />
             </div>
@@ -283,11 +333,16 @@ export function SimulatorPage() {
             <p className="text-lg font-bold text-blue-900">{formatPrice(3080000)}</p>
           </button>
 
-          <button onClick={() => handleSetSelect('budget')} className="group relative bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
+          <button onClick={() => handleSetSelect('budget')} className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center shadow-lg"><Wallet className="w-6 h-6 text-white" /></div>
-                <div><h3 className="text-xl font-bold text-green-900">가심비세트</h3><p className="text-xs text-green-700 mt-1">경제적 구성</p></div>
+                <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <Wallet className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-green-900">가심비세트</h3>
+                  <p className="text-xs text-green-700 mt-1">경제적 구성</p>
+                </div>
               </div>
               <Sparkles className="w-5 h-5 text-green-500" />
             </div>
@@ -296,67 +351,55 @@ export function SimulatorPage() {
           </button>
         </div>
 
+        {/* 시뮬레이터 본체 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* 배 이미지 영역 - PNG 배경 이미지로 교체됨 */}
-          {/* 배 이미지 영역 */}
-<div className="lg:col-span-2">
-  {/* p-4 md:p-8 삭제 -> p-0 으로 변경하여 꽉 채움 */}
-  <div className="bg-white rounded-lg p-0 shadow-sm overflow-hidden border border-border">
-    <div className="p-6 border-b border-border">
-      <h2 className="text-xl md:text-2xl font-bold">선박 장비 배치</h2>
-    </div>
-    
-    <div className="relative bg-white flex items-center justify-center w-full" 
-     style={{ minHeight: '400px', height: '60vh' }}> {/* 높이를 화면 높이의 60% 정도로 설정 */}
-      
-      {/* PNG 배경 이미지 - object-cover로 공간을 꽉 채움 */}
-      <img 
-        src={getBoatImagePath()} 
-        alt="선박 이미지" 
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none" 
-      />
-      <div className="absolute inset-0 pointer-events-none" />
-
-      {/* 전자장비 위치 마커 (기존 로직 유지) */}
-      {EQUIPMENT_POSITIONS.map((position) => {
-        const selected = selectedEquipment[position.id]?.product;
-        return (
-          <div
-            key={position.id}
-            className="absolute cursor-pointer group z-10"
-            style={{ 
-              left: `${position.x}%`, 
-              top: `${position.y}%`, 
-              transform: 'translate(-50%, -50%)' 
-            }}
-            onClick={() => handlePositionClick(position)}
-          >
-            {/* ... 마커 렌더링 코드 (동일) ... */}
-            {selected ? (
-              <div className="relative scale-90 md:scale-100 transition-transform hover:scale-110">
-                <div className="w-20 h-20 rounded-lg border-4 border-primary bg-white p-1 shadow-2xl">
-                  <img src={selected.image} alt={selected.name} className="w-full h-full object-cover rounded" />
-                </div>
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white text-[10px] md:text-xs px-2 py-1 rounded whitespace-nowrap shadow-md font-bold">
-                  {position.name}
-                </div>
+          {/* 배 이미지 */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-border">
+              <div className="p-6 border-b border-border">
+                <h2 className="text-xl md:text-2xl font-bold">선박 장비 배치</h2>
               </div>
-            ) : (
-              <div className="relative group">
-                <div className="w-7 h-7 rounded-full border-4 bg-white border-primary group-hover:bg-primary transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-                <div className="absolute top-10 left-1/2 transform -translate-x-1/2 whitespace-nowrap bg-slate-800/90 text-white px-2 py-1 rounded text-[10px] md:text-xs z-20 shadow-md">
-                  {position.name}
-                </div>
+              <div className="relative bg-white flex items-center justify-center w-full" style={{ minHeight: '400px', height: '60vh' }}>
+                <img
+                  src={boatType === 'fishing' ? '/fishing.png' : '/leisure.png'}
+                  alt="선박 이미지"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                />
+                <div className="absolute inset-0 pointer-events-none" />
+                {EQUIPMENT_POSITIONS.map((position) => {
+                  const selected = selectedEquipment[position.id]?.product;
+                  return (
+                    <div
+                      key={position.id}
+                      className="absolute cursor-pointer group z-10"
+                      style={{ left: `${position.x}%`, top: `${position.y}%`, transform: 'translate(-50%, -50%)' }}
+                      onClick={() => handlePositionClick(position)}
+                    >
+                      {selected ? (
+                        <div className="relative scale-90 md:scale-100 transition-transform hover:scale-110">
+                          <div className="w-20 h-20 rounded-lg border-4 border-primary bg-white p-1 shadow-2xl">
+                            <img src={selected.image} alt={selected.name} className="w-full h-full object-cover rounded" />
+                          </div>
+                          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] md:text-xs px-2 py-1 rounded whitespace-nowrap shadow-md font-bold">
+                            {position.name}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative group">
+                          <div className="w-7 h-7 rounded-full border-4 bg-white border-primary group-hover:bg-primary transition-all shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                          <div className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-800/90 text-white px-2 py-1 rounded text-[10px] md:text-xs z-20 shadow-md">
+                            {position.name}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
-        );
-      })}
-    </div>
-  </div>
-</div>
 
-          {/* 견적 요약 영역 */}
+          {/* 견적 요약 */}
           <div className="lg:col-span-1">
             <div className="bg-primary text-primary-foreground rounded-lg p-6 shadow-lg sticky top-24">
               <h2 className="text-2xl font-bold mb-6">나의 견적</h2>
@@ -381,27 +424,33 @@ export function SimulatorPage() {
                   })
                 )}
               </div>
-              <div className="space-y-3 mb-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={includeInstallation} onChange={(e) => setIncludeInstallation(e.target.checked)} className="w-4 h-4" />
-                  <span className="text-sm">설치비 (+{formatPrice(300000)})</span>
-                </label>
-              </div>
-              <div className="border-t border-primary-foreground/20 pt-4 mb-6 flex justify-between items-center">
+              <label className="flex items-center gap-2 cursor-pointer mb-6">
+                <input type="checkbox" checked={includeInstallation} onChange={e => setIncludeInstallation(e.target.checked)} className="w-4 h-4" />
+                <span className="text-sm">설치비 (+{formatPrice(300000)})</span>
+              </label>
+              <div className="border-t border-primary-foreground/20 pt-4 mb-4 flex justify-between items-center">
                 <span className="text-lg font-semibold">총 견적</span>
                 <span className="text-2xl font-bold">{formatPrice(calculateTotal())}</span>
               </div>
-              {saveSuccess && (
-                <div className="text-xs text-green-300 text-center py-1">세트가 저장되었습니다!</div>
+
+              {/* 저장 상태 표시 */}
+              {isAuthenticated && (
+                <div className="text-xs opacity-70 text-center mb-2">
+                  {boatType === 'fishing' ? '어선용' : '레저용'} 저장 세트: {currentTypeSets.length} / {MAX_SETS}
+                </div>
               )}
+              {saveSuccess && (
+                <div className="text-xs text-green-300 text-center py-1 mb-2">세트가 저장되었습니다!</div>
+              )}
+
               <Button
-                className="w-full bg-white/10 text-white hover:bg-white/20 border border-white/20"
+                className="w-full bg-white/10 text-white hover:bg-white/20 border border-white/20 mb-3"
                 size="sm"
-                disabled={selectedProducts.length === 0 || saveLoading}
+                disabled={selectedProducts.length === 0 || saveLoading || (isAuthenticated && !canSaveMore)}
                 onClick={handleSaveSet}
               >
                 {saveLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                {isAuthenticated ? '내 세트 저장' : '로그인 후 저장'}
+                {!isAuthenticated ? '로그인 후 저장' : !canSaveMore ? `저장 한도 초과 (${MAX_SETS}개)` : '내 세트 저장'}
               </Button>
               <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" disabled={selectedProducts.length === 0}>
                 견적 문의하기
@@ -410,9 +459,54 @@ export function SimulatorPage() {
           </div>
         </div>
 
-        {/* 하단 제품 선택 영역 */}
-        <div id="product-selection-area" className="mt-12 bg-white rounded-lg p-6 shadow-sm">
-          <h2 className="text-2xl font-bold mb-4">{selectedPosition ? `${selectedPosition.name} 선택` : '제품 선택'}</h2>
+        {/* 내 저장 세트 (로그인 시) */}
+        {isAuthenticated && (
+          <div className="mt-8 bg-white rounded-lg p-6 shadow-sm border border-border">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">
+                내 저장 세트 — {boatType === 'fishing' ? '어선용' : '레저용'}
+                <span className="ml-2 text-sm font-normal text-muted-foreground">({currentTypeSets.length}/{MAX_SETS})</span>
+              </h2>
+            </div>
+            {setsLoading ? (
+              <div className="flex items-center justify-center py-10 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" /> 불러오는 중...
+              </div>
+            ) : currentTypeSets.length === 0 ? (
+              <div className="py-10 text-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                저장된 세트가 없습니다. 장비를 구성하고 저장해보세요.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {currentTypeSets.map((set) => (
+                  <div key={set.id} className="border border-border rounded-lg p-4 hover:border-primary transition-colors">
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-semibold text-sm">{set.name}</h3>
+                      <button
+                        onClick={() => handleDeleteSet(set.id, toApiType(boatType))}
+                        className="text-muted-foreground hover:text-destructive transition-colors ml-2 flex-shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {set.description && (
+                      <p className="text-xs text-muted-foreground mb-3">{set.description}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      장비 {set.items.length}개 · {new Date(set.createdAt).toLocaleDateString('ko-KR')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 제품 선택 영역 */}
+        <div id="product-selection-area" className="mt-8 bg-white rounded-lg p-6 shadow-sm">
+          <h2 className="text-2xl font-bold mb-4">
+            {selectedPosition ? `${selectedPosition.name} 선택` : '제품 선택'}
+          </h2>
           {!selectedPosition ? (
             <div className="text-center py-16 border-2 border-dashed border-border rounded-lg bg-secondary/50">
               <Search className="w-12 h-12 mx-auto text-primary mb-4 opacity-20" />
@@ -423,32 +517,47 @@ export function SimulatorPage() {
               <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  <Input placeholder="제품명 검색..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+                  <Input placeholder="제품명 검색..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
-                <select value={selectedBrand} onChange={(e) => setSelectedBrand(e.target.value)} className="px-4 py-2 border border-border rounded-md">
+                <select value={selectedBrand} onChange={e => setSelectedBrand(e.target.value)} className="px-4 py-2 border border-border rounded-md">
                   <option value="all">전체 브랜드</option>
                   {BRANDS.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
                 </select>
-                <Button variant="outline" onClick={() => setSelectedPosition(null)}><X className="w-4 h-4 mr-2" /> 선택 취소</Button>
+                <Button variant="outline" onClick={() => setSelectedPosition(null)}>
+                  <X className="w-4 h-4 mr-2" /> 선택 취소
+                </Button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    className={`cursor-pointer group bg-white border-2 rounded-lg overflow-hidden transition-all ${selectedEquipment[selectedPosition.id]?.product?.id === product.id ? 'border-primary shadow-lg scale-105' : 'border-border hover:border-primary'}`}
-                    onClick={() => handleProductSelect(product)}
-                  >
-                    <div className="aspect-square bg-muted"><img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" /></div>
-                    <div className="p-4">
-                      <h3 className="text-sm font-semibold line-clamp-2 h-10">{product.name}</h3>
-                      <p className="text-lg text-primary font-bold mt-2">{formatPrice(product.price)}</p>
+              {apiLoading ? (
+                <div className="flex items-center justify-center py-10 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" /> 상품 로딩 중...
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className={`cursor-pointer group bg-white border-2 rounded-lg overflow-hidden transition-all ${
+                        selectedEquipment[selectedPosition.id]?.product?.id === product.id
+                          ? 'border-primary shadow-lg scale-105'
+                          : 'border-border hover:border-primary'
+                      }`}
+                      onClick={() => handleProductSelect(product)}
+                    >
+                      <div className="aspect-square bg-muted">
+                        <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                      </div>
+                      <div className="p-4">
+                        <h3 className="text-sm font-semibold line-clamp-2 h-10">{product.name}</h3>
+                        <p className="text-lg text-primary font-bold mt-2">{formatPrice(product.price)}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
+
       </div>
     </div>
   );

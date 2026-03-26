@@ -272,9 +272,13 @@ export interface SimulatorSetItemData {
   categoryId: string;
 }
 
+export type SimulatorType = 'fishing_vessel' | 'leisure';
+
 export interface SimulatorSet {
   id: string;
   userId?: string;
+  userName?: string;
+  type: SimulatorType;
   name: string;
   description: string | null;
   isActive: boolean;
