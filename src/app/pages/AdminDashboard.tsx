@@ -713,8 +713,7 @@ export default function AdminDashboard() {
     setSimSetForm({ type: set.type, name: set.name, description: set.description ?? '', isActive: set.isActive });
     const newSlots = { ...EMPTY_SIM_SLOTS };
     for (const item of set.items || []) {
-      const cat = categories.find(c => c.id === item.categoryId);
-      const slot = SIM_SLOTS.find(s => s.slug === cat?.slug);
+      const slot = SIM_SLOTS.find(s => s.slug === item.categorySlug);
       if (slot) {
         newSlots[slot.slug] = {
           productId: item.productId,
@@ -1365,10 +1364,7 @@ export default function AdminDashboard() {
                           {set.description && <p className="text-xs text-slate-400 mb-2">{set.description}</p>}
                           <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1">
                             {SIM_SLOTS.map(slot => {
-                              const item = (set.items || []).find(i => {
-                                const cat = categories.find(c => c.id === i.categoryId);
-                                return cat?.slug === slot.slug;
-                              });
+                              const item = (set.items || []).find(i => i.categorySlug === slot.slug);
                               return (
                                 <div key={slot.slug} className="flex items-center gap-1.5 text-[11px]">
                                   <span className="shrink-0 bg-blue-50 text-blue-600 font-bold px-1.5 py-0.5 rounded w-[58px] text-center">{slot.name}</span>

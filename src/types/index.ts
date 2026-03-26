@@ -364,6 +364,7 @@ export interface SimulatorSetItemData {
   productName: string | null;
   categoryId: string;
   categoryName: string | null;
+  categorySlug: string | null;
 }
 
 export type SimulatorType = 'fishing_vessel' | 'leisure';
