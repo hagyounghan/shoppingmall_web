@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Wrench, MessageSquare, Youtube } from 'lucide-react';
-import { ROUTES } from '../../constants/routes';
+import { ROUTES } from '@shared/constants/routes';
 
 export function QuickButtons() {
   return (

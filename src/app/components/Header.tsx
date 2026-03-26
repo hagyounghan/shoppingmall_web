@@ -1,22 +1,22 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, ShoppingCart, Heart, Menu, ChevronDown, LogOut } from 'lucide-react';
-import { ROUTES } from '../../constants/routes';
-import { CATEGORIES } from '../../constants/categories';
-import { useAuth } from '../../contexts/AuthContext';
-import { useCart } from '../../contexts/CartContext';
+import { ROUTES } from '@shared/constants/routes';
+import { CATEGORIES } from '@shared/constants/categories';
+import { useAuth } from '@features/auth';
+import { useCart } from '@features/cart';
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
-} from './ui/sheet';
+} from '@shared/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-} from './ui/dropdown-menu';
+} from '@shared/components/ui/dropdown-menu';
 
 interface NavigationItem {
   label: string;
