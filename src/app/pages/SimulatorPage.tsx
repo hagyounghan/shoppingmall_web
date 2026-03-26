@@ -16,7 +16,7 @@ import { PaginatedProducts } from '../../types';
 
 // 장비 위치 정의
 const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
-  { id: 'gps-plotter', name: 'GPS 플로터', x: 45, y: 25, category: 'GPS' },
+  { id: 'gps-plotter', name: 'GPS플로터', x: 45, y: 25, category: 'GPS' },
   { id: 'radar', name: '레이더', x: 50, y: 15, category: 'Radar' },
   { id: 'vhf-radio', name: 'VHF 무선기', x: 20, y: 30, category: 'VHF' },
   { id: 'trolling-motor', name: '트롤링모터', x: 15, y: 70, category: 'TrollingMotor' },
@@ -44,8 +44,8 @@ type PresetKey = typeof PRESET_SET_KEYS[number];
 
 const PRESET_META: Record<PresetKey, { name: string; description: string; searchKeyword: string }> = {
   premium: { name: '프리미엄 세트', description: '명장님이 선택한 실용적인 픽으로 구성된 최고급 세트', searchKeyword: '프리미엄' },
-  value:   { name: '가성비 세트', description: '합리적인 가격의 실용적인 세트', searchKeyword: '가성비' },
-  budget:  { name: '가심비 세트', description: '경제적인 가격의 기본 세트', searchKeyword: '가심비' },
+  value: { name: '가성비 세트', description: '합리적인 가격의 실용적인 세트', searchKeyword: '가성비' },
+  budget: { name: '가심비 세트', description: '경제적인 가격의 기본 세트', searchKeyword: '가심비' },
 };
 
 const MAX_SETS = 3;
@@ -60,6 +60,7 @@ export function SimulatorPage() {
   const [boatType, setBoatType] = useState<'fishing' | 'leisure'>('leisure');
 
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]); // 프리셋 적용용 전체 캐시
   const [apiLoading, setApiLoading] = useState(false);
   const [presetSets, setPresetSets] = useState<Record<PresetKey, SimulatorSet | null>>({
     premium: null,
@@ -87,14 +88,30 @@ export function SimulatorPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
 
-  // 실제 상품 로드
+  // 프리셋 적용용 전체 상품 로드 (1회)
   useEffect(() => {
+    apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=200`)
+      .then(res => setAllProducts(Array.isArray(res) ? res : res?.data ?? []))
+      .catch(() => {});
+  }, []);
+
+  // 위치 선택 시 해당 카테고리 상품 로드
+  useEffect(() => {
+    if (!selectedPosition) {
+      setApiProducts([]);
+      return;
+    }
+    const categoryId = POSITION_TO_CATEGORY_ID[selectedPosition.id];
+    if (!categoryId) {
+      setApiProducts([]);
+      return;
+    }
     setApiLoading(true);
-    apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=100`)
+    apiGet<PaginatedProducts>(API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(categoryId))
       .then(res => setApiProducts(Array.isArray(res) ? res : res?.data ?? []))
       .catch(() => setApiProducts([]))
       .finally(() => setApiLoading(false));
-  }, []);
+  }, [selectedPosition]);
 
   // 프리셋 세트 (프리미엄/가성비/가심비) 서버에서 로드
   useEffect(() => {
@@ -104,8 +121,8 @@ export function SimulatorPage() {
         const list: SimulatorSet[] = Array.isArray(sets) ? sets : [];
         setPresetSets({
           premium: list.find(s => s.name.includes(PRESET_META.premium.searchKeyword)) ?? null,
-          value:   list.find(s => s.name.includes(PRESET_META.value.searchKeyword))   ?? null,
-          budget:  list.find(s => s.name.includes(PRESET_META.budget.searchKeyword))  ?? null,
+          value: list.find(s => s.name.includes(PRESET_META.value.searchKeyword)) ?? null,
+          budget: list.find(s => s.name.includes(PRESET_META.budget.searchKeyword)) ?? null,
         });
       })
       .catch(() => setPresetSets({ premium: null, value: null, budget: null }));
@@ -143,9 +160,9 @@ export function SimulatorPage() {
   // 프리셋 세트 총 가격 계산 (서버 데이터 기반)
   const calcPresetTotal = (setId: PresetKey): number => {
     const serverSet = presetSets[setId];
-    if (!serverSet || apiProducts.length === 0) return 0;
+    if (!serverSet || allProducts.length === 0) return 0;
     return serverSet.items.reduce((sum, item) => {
-      const product = apiProducts.find(p => p.id === item.productId);
+      const product = allProducts.find(p => p.id === item.productId);
       return sum + (product?.price ?? 0);
     }, 0);
   };
@@ -187,7 +204,7 @@ export function SimulatorPage() {
     set.items.forEach(item => {
       const positionId = CATEGORY_ID_TO_POSITION[item.categoryId];
       if (!positionId) return;
-      const product = apiProducts.find(p => p.id === item.productId);
+      const product = allProducts.find(p => p.id === item.productId);
       if (product) newSelection[positionId] = { positionId, product };
     });
     setSelectedEquipment(newSelection);
@@ -280,15 +297,10 @@ export function SimulatorPage() {
 
   const filteredProducts = useMemo(() => {
     let products = apiProducts;
-    // 선택된 위치의 카테고리로 필터링
-    if (selectedPosition) {
-      const categoryId = POSITION_TO_CATEGORY_ID[selectedPosition.id];
-      if (categoryId) products = products.filter(p => p.categoryId === categoryId);
-    }
     if (selectedBrand !== 'all') products = products.filter(p => p.name.toUpperCase().includes(selectedBrand.toUpperCase()));
     if (searchQuery) products = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
     return products;
-  }, [selectedBrand, searchQuery, selectedPosition, apiProducts]);
+  }, [selectedBrand, searchQuery, apiProducts]);
 
   return (
     <div className="min-h-screen bg-secondary">
@@ -562,11 +574,10 @@ export function SimulatorPage() {
                   {filteredProducts.map((product) => (
                     <div
                       key={product.id}
-                      className={`cursor-pointer group bg-white border-2 rounded-lg overflow-hidden transition-all ${
-                        selectedEquipment[selectedPosition.id]?.product?.id === product.id
+                      className={`cursor-pointer group bg-white border-2 rounded-lg overflow-hidden transition-all ${selectedEquipment[selectedPosition.id]?.product?.id === product.id
                           ? 'border-primary shadow-lg scale-105'
                           : 'border-border hover:border-primary'
-                      }`}
+                        }`}
                       onClick={() => handleProductSelect(product)}
                     >
                       <div className="aspect-square bg-muted">
