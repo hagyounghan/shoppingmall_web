@@ -12,6 +12,7 @@ import { BRANDS } from '../../constants/brands';
 import { apiGet, apiPost, apiDelete } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCategories } from '../../contexts/CategoryContext';
 import { PaginatedProducts } from '../../types';
 
 // 장비 위치 정의 — id가 서버 category slug와 1:1 대응
@@ -44,12 +45,17 @@ function toApiType(boatType: 'fishing' | 'leisure'): SimulatorType {
 export function SimulatorPage() {
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user } = useAuth();
+  const { slugMap: mainSlugMap } = useCategories(); // CategoryContext: 메인 카테고리 (gps-plotter, radar 등)
   const [boatType, setBoatType] = useState<'fishing' | 'leisure'>('leisure');
-  // 시뮬레이터 전용 slug 맵 — 메인 + 서브 카테고리 포함 (transducer 등 서브카테고리 필요)
-  const [slugMap, setSlugMap] = useState<Record<string, Category>>({});
+  // 서브카테고리 전용 slugMap (transducer 등) — 메인 카테고리와 병합
+  const [subSlugMap, setSubSlugMap] = useState<Record<string, Category>>({});
+  const slugMap = useMemo<Record<string, Category>>(
+    () => ({ ...mainSlugMap, ...subSlugMap }),
+    [mainSlugMap, subSlugMap]
+  );
   const [apiProducts, setApiProducts] = useState<Product[]>([]);
-  const [allProducts, setAllProducts] = useState<Product[]>([]); // 프리셋 적용용 전체 캐시
   const [apiLoading, setApiLoading] = useState(false);
+  const [presetApplying, setPresetApplying] = useState(false);
   const [presetSets, setPresetSets] = useState<Record<PresetKey, SimulatorSet | null>>({
     premium: null,
     value: null,
@@ -76,23 +82,17 @@ export function SimulatorPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
 
-  // 시뮬레이터 전용: 메인 + 서브 카테고리 로드 → slug 맵 구성 (1회)
+  // 시뮬레이터 전용: 서브카테고리(transducer 등) 로드 — 메인 카테고리는 CategoryContext에서 가져옴
   useEffect(() => {
-    apiGet<{ data: Category[] }>(`${API_ENDPOINTS.CATEGORIES}?take=200`)
+    apiGet<{ data: Category[] } | Category[]>(`${API_ENDPOINTS.CATEGORIES}?take=30`)
       .then(res => {
-        const list: Category[] = Array.isArray(res) ? res : res?.data ?? [];
+        const list: Category[] = Array.isArray(res) ? res : (res as { data: Category[] })?.data ?? [];
+        // 서브카테고리만 추출 (parentId !== null)
         const map: Record<string, Category> = {};
-        list.forEach(c => { if (c.slug) map[c.slug] = c; });
-        setSlugMap(map);
+        list.filter(c => c.parentId !== null).forEach(c => { if (c.slug) map[c.slug] = c; });
+        setSubSlugMap(map);
       })
-      .catch(e => console.error('[Simulator] 카테고리 로드 실패:', e));
-  }, []);
-
-  // 프리셋 적용용 전체 상품 로드 (1회)
-  useEffect(() => {
-    apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=200`)
-      .then(res => setAllProducts(Array.isArray(res) ? res : res?.data ?? []))
-      .catch(() => {});
+      .catch(e => console.error('[Simulator] 서브카테고리 로드 실패:', e));
   }, []);
 
   // 위치 선택 시 slug → categoryId 조회 후 상품 로드
@@ -162,21 +162,11 @@ export function SimulatorPage() {
     loadSets();
   }, [isAuthenticated, user?.id]);
 
-  // 프리셋 세트 총 가격 계산 (서버 데이터 기반)
-  const calcPresetTotal = (setId: PresetKey): number => {
-    const serverSet = presetSets[setId];
-    if (!serverSet || allProducts.length === 0) return 0;
-    return serverSet.items.reduce((sum, item) => {
-      const product = allProducts.find(p => p.id === item.productId);
-      return sum + (product?.price ?? 0);
-    }, 0);
-  };
-
-  // preset set 적용
+  // URL set 파라미터로 프리셋 자동 적용
   useEffect(() => {
     const setParam = searchParams.get('set');
-    if (setParam && setParam in EQUIPMENT_SETS) {
-      handleSetSelect(setParam as keyof typeof EQUIPMENT_SETS);
+    if (setParam && PRESET_SET_KEYS.includes(setParam as PresetKey)) {
+      handleSetSelect(setParam as PresetKey);
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [searchParams]);
@@ -201,8 +191,8 @@ export function SimulatorPage() {
     }
   };
 
-  const applyServerSet = (set: SimulatorSet) => {
-    // categoryId → slug 역방향 맵 (CategoryContext slugMap에서 생성)
+  const applyServerSet = async (set: SimulatorSet) => {
+    // categoryId → slug 역방향 맵
     const idToSlug: Record<string, string> = {};
     Object.entries(slugMap).forEach(([slug, cat]) => { idToSlug[cat.id] = slug; });
 
@@ -210,13 +200,24 @@ export function SimulatorPage() {
     EQUIPMENT_POSITIONS.forEach(pos => {
       newSelection[pos.id] = { positionId: pos.id, product: null };
     });
-    set.items.forEach(item => {
-      const positionId = idToSlug[item.categoryId]; // categoryId → slug === positionId
-      if (!positionId) return;
-      const product = allProducts.find(p => p.id === item.productId);
-      if (product) newSelection[positionId] = { positionId, product };
-    });
-    setSelectedEquipment(newSelection);
+
+    // 각 아이템을 개별 API 요청으로 조회 (bulk load 대신)
+    setPresetApplying(true);
+    try {
+      await Promise.all(set.items.map(async (item) => {
+        const positionId = idToSlug[item.categoryId];
+        if (!positionId) return;
+        try {
+          const product = await apiGet<Product>(API_ENDPOINTS.PRODUCT_DETAIL(item.productId));
+          if (product) newSelection[positionId] = { positionId, product };
+        } catch {
+          // 개별 제품 조회 실패 시 해당 위치 건너뜀
+        }
+      }));
+      setSelectedEquipment(newSelection);
+    } finally {
+      setPresetApplying(false);
+    }
   };
 
   const handleSetSelect = (setId: PresetKey) => {
@@ -337,7 +338,7 @@ export function SimulatorPage() {
 
         {/* 추천 세트 */}
         <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <button onClick={() => handleSetSelect('premium')} className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
+          <button onClick={() => handleSetSelect('premium')} disabled={presetApplying} className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left disabled:opacity-70 disabled:cursor-not-allowed">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shadow-lg">
@@ -351,13 +352,13 @@ export function SimulatorPage() {
               <Sparkles className="w-5 h-5 text-amber-500" />
             </div>
             <p className="text-sm text-amber-800 mb-4 line-clamp-2">{presetSets.premium?.description ?? PRESET_META.premium.description}</p>
-            {calcPresetTotal('premium') > 0
-              ? <p className="text-lg font-bold text-amber-900">{formatPrice(calcPresetTotal('premium'))}</p>
-              : <p className="text-sm text-amber-600">{presetSets.premium ? '가격 계산 중...' : '서버 데이터 없음'}</p>
+            {presetApplying
+              ? <p className="text-sm text-amber-600 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 적용 중...</p>
+              : <p className="text-sm text-amber-600">{presetSets.premium ? '클릭하여 적용' : '서버 데이터 없음'}</p>
             }
           </button>
 
-          <button onClick={() => handleSetSelect('value')} className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
+          <button onClick={() => handleSetSelect('value')} disabled={presetApplying} className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left disabled:opacity-70 disabled:cursor-not-allowed">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
@@ -371,13 +372,13 @@ export function SimulatorPage() {
               <Sparkles className="w-5 h-5 text-blue-500" />
             </div>
             <p className="text-sm text-blue-800 mb-4 line-clamp-2">{presetSets.value?.description ?? PRESET_META.value.description}</p>
-            {calcPresetTotal('value') > 0
-              ? <p className="text-lg font-bold text-blue-900">{formatPrice(calcPresetTotal('value'))}</p>
-              : <p className="text-sm text-blue-600">{presetSets.value ? '가격 계산 중...' : '서버 데이터 없음'}</p>
+            {presetApplying
+              ? <p className="text-sm text-blue-600 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 적용 중...</p>
+              : <p className="text-sm text-blue-600">{presetSets.value ? '클릭하여 적용' : '서버 데이터 없음'}</p>
             }
           </button>
 
-          <button onClick={() => handleSetSelect('budget')} className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left">
+          <button onClick={() => handleSetSelect('budget')} disabled={presetApplying} className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6 hover:shadow-xl hover:scale-105 transition-all text-left disabled:opacity-70 disabled:cursor-not-allowed">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center shadow-lg">
@@ -391,9 +392,9 @@ export function SimulatorPage() {
               <Sparkles className="w-5 h-5 text-green-500" />
             </div>
             <p className="text-sm text-green-800 mb-4 line-clamp-2">{presetSets.budget?.description ?? PRESET_META.budget.description}</p>
-            {calcPresetTotal('budget') > 0
-              ? <p className="text-lg font-bold text-green-900">{formatPrice(calcPresetTotal('budget'))}</p>
-              : <p className="text-sm text-green-600">{presetSets.budget ? '가격 계산 중...' : '서버 데이터 없음'}</p>
+            {presetApplying
+              ? <p className="text-sm text-green-600 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> 적용 중...</p>
+              : <p className="text-sm text-green-600">{presetSets.budget ? '클릭하여 적용' : '서버 데이터 없음'}</p>
             }
           </button>
         </div>
