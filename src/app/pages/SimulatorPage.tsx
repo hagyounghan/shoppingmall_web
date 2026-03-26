@@ -20,7 +20,7 @@ const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
   { id: 'radar', name: '레이더', x: 50, y: 15, category: 'Radar' },
   { id: 'vhf-radio', name: 'VHF 무선기', x: 20, y: 30, category: 'VHF' },
   { id: 'trolling-motor', name: '트롤링모터', x: 15, y: 70, category: 'TrollingMotor' },
-  { id: 'fishfinder', name: '어군탐지기', x: 75, y: 50, category: 'Fishfinder' },
+  { id: 'fishfinder', name: '송수파기', x: 75, y: 50, category: 'Fishfinder' },
   { id: 'autopilot', name: '자동조타', x: 60, y: 60, category: 'Autopilot' },
 ];
 
