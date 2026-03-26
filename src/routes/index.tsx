@@ -6,6 +6,7 @@ import { PurchaseConsultingPage } from '../app/pages/PurchaseConsultingPage';
 import { ResourceCenterPage } from '../app/pages/ResourceCenterPage';
 import { ResourceLecturePage } from '../app/pages/ResourceLecturePage';
 import { ResourceQnAPage } from '../app/pages/ResourceQnAPage';
+import { ResourceFaqPage } from '../app/pages/ResourceFaqPage';
 import { FishingPointsPage } from '../app/pages/FishingPointsPage';
 import { MyPage } from '../app/pages/MyPage';
 import { BrandsPage } from '../app/pages/BrandsPage';
@@ -38,7 +39,7 @@ export function AppRoutes() {
       <Route path={ROUTES.RESOURCE_CENTER} element={<ResourceCenterPage />} />
       <Route path={ROUTES.RESOURCE_LECTURE} element={<ResourceLecturePage />} />
       <Route path={ROUTES.RESOURCE_QNA} element={<ResourceQnAPage />} />
-      <Route path={ROUTES.RESOURCE_FAQ} element={<ResourceQnAPage />} />
+      <Route path={ROUTES.RESOURCE_FAQ} element={<ResourceFaqPage />} />
       <Route path={ROUTES.RESOURCE_FISHING_POINTS} element={<FishingPointsPage />} />
       
       {/* 브랜드 및 정보 관련 */}

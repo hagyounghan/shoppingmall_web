@@ -1,24 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
 import { MessageSquare, Search, ChevronDown, ChevronUp, BadgeCheck } from 'lucide-react';
 import { apiGet } from '../../lib/api-client';
 import { API_ENDPOINTS } from '../../config/api';
-import { InquiryItem, Faq, PaginatedResponse } from '../../types';
+import { InquiryItem, PaginatedResponse } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
-import { ROUTES } from '../../constants/routes';
 
-type Tab = 'all' | 'mine' | 'faq';
+type Tab = 'all' | 'mine';
 
 export function ResourceQnAPage() {
   const { isAuthenticated, user } = useAuth();
-  const location = useLocation();
-  const [activeTab, setActiveTab] = useState<Tab>(
-    location.pathname === ROUTES.RESOURCE_FAQ ? 'faq' : 'all'
-  );
+  const [activeTab, setActiveTab] = useState<Tab>('all');
 
   // ─── 전체 문의 상태 ────────────────────────────────────────────────────────
-  const [keyword, setKeyword] = useState('');
   const [inputKeyword, setInputKeyword] = useState('');
+  const [keyword, setKeyword] = useState('');
   const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
   const [inquiryTotal, setInquiryTotal] = useState(0);
   const [inquiryPage, setInquiryPage] = useState(1);
@@ -30,13 +25,6 @@ export function ResourceQnAPage() {
   const [myInquiries, setMyInquiries] = useState<InquiryItem[]>([]);
   const [myLoading, setMyLoading] = useState(false);
   const [expandedMine, setExpandedMine] = useState<Set<string>>(new Set());
-
-  // ─── FAQ 상태 ──────────────────────────────────────────────────────────────
-  const [faqs, setFaqs] = useState<Faq[]>([]);
-  const [faqCategory, setFaqCategory] = useState('all');
-  const [faqCategories, setFaqCategories] = useState<string[]>([]);
-  const [faqLoading, setFaqLoading] = useState(false);
-  const [expandedFaq, setExpandedFaq] = useState<Set<string>>(new Set());
 
   // 전체 문의 fetch
   const fetchInquiries = useCallback((page: number, kw: string) => {
@@ -67,24 +55,6 @@ export function ResourceQnAPage() {
         .finally(() => setMyLoading(false));
     }
   }, [activeTab, isAuthenticated]);
-
-  // FAQ fetch
-  useEffect(() => {
-    if (activeTab === 'faq') {
-      setFaqLoading(true);
-      const categoryParam = faqCategory !== 'all' ? `?category=${encodeURIComponent(faqCategory)}` : '';
-      Promise.all([
-        apiGet<Faq[]>(`${API_ENDPOINTS.FAQS}${categoryParam}`),
-        apiGet<string[]>(API_ENDPOINTS.FAQ_CATEGORIES),
-      ])
-        .then(([faqData, cats]) => {
-          setFaqs(faqData);
-          setFaqCategories(cats);
-        })
-        .catch(() => setFaqs([]))
-        .finally(() => setFaqLoading(false));
-    }
-  }, [activeTab, faqCategory]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,15 +95,11 @@ export function ResourceQnAPage() {
                 내 문의
               </button>
             )}
-            <button className={tabClass('faq')} onClick={() => setActiveTab('faq')}>
-              FAQ
-            </button>
           </div>
 
           {/* ─── 전체 문의 탭 ─────────────────────────────────────────────── */}
           {activeTab === 'all' && (
             <div>
-              {/* 검색 */}
               <form onSubmit={handleSearch} className="mb-6 flex gap-3">
                 <div className="relative flex-grow">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -309,76 +275,6 @@ export function ResourceQnAPage() {
                               </p>
                             </div>
                           )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ─── FAQ 탭 ───────────────────────────────────────────────────── */}
-          {activeTab === 'faq' && (
-            <div>
-              {/* 카테고리 필터 */}
-              {faqCategories.length > 0 && (
-                <div className="mb-6 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setFaqCategory('all')}
-                    className={`px-4 py-2 rounded-lg transition-all ${
-                      faqCategory === 'all'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-white border border-border hover:border-primary'
-                    }`}
-                  >
-                    전체
-                  </button>
-                  {faqCategories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setFaqCategory(cat)}
-                      className={`px-4 py-2 rounded-lg transition-all ${
-                        faqCategory === cat
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-white border border-border hover:border-primary'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {faqLoading ? (
-                <div className="text-center py-12 text-muted-foreground">불러오는 중...</div>
-              ) : faqs.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">등록된 FAQ가 없습니다.</div>
-              ) : (
-                <div className="space-y-3">
-                  {faqs.map((faq) => (
-                    <div key={faq.id} className="bg-white border border-border rounded-lg overflow-hidden hover:border-primary transition-colors">
-                      <button
-                        onClick={() => toggleSet(expandedFaq, faq.id, setExpandedFaq)}
-                        className="w-full p-5 text-left flex items-start justify-between gap-4 hover:bg-secondary/50 transition-colors"
-                      >
-                        <div className="flex-1">
-                          {faq.category && (
-                            <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary text-xs font-semibold rounded mb-2">
-                              {faq.category}
-                            </span>
-                          )}
-                          <h3 className="font-semibold">{faq.question}</h3>
-                        </div>
-                        <div className="flex-shrink-0">
-                          {expandedFaq.has(faq.id)
-                            ? <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                            : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
-                        </div>
-                      </button>
-                      {expandedFaq.has(faq.id) && (
-                        <div className="px-5 pb-5 pt-0 border-t border-border">
-                          <p className="pt-4 text-muted-foreground whitespace-pre-line">{faq.answer}</p>
                         </div>
                       )}
                     </div>
