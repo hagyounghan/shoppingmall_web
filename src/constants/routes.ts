@@ -9,7 +9,6 @@ export const ROUTES = {
   SIMULATOR: '/simulator',
   USABILITY_SERVICE: '/usability-service',
   PURCHASE_CONSULTING: '/purchase-consulting',
-  USABILITY_CONSULTING: '/usability-consulting',
   RESOURCE_CENTER: '/resource-center',
   RESOURCE_LECTURE: '/resource-center/lecture',
   RESOURCE_QNA: '/resource-center/qna',

@@ -3,7 +3,6 @@ import { MainPage } from '../app/pages/MainPage';
 import { ProductDetailPage } from '../app/pages/ProductDetailPage';
 import { UsabilityServicePage } from '../app/pages/UsabilityServicePage';
 import { PurchaseConsultingPage } from '../app/pages/PurchaseConsultingPage';
-import { UsabilityConsultingPage } from '../app/pages/UsabilityConsultingPage';
 import { ResourceCenterPage } from '../app/pages/ResourceCenterPage';
 import { ResourceLecturePage } from '../app/pages/ResourceLecturePage';
 import { ResourceQnAPage } from '../app/pages/ResourceQnAPage';
@@ -35,8 +34,6 @@ export function AppRoutes() {
       {/* 서비스 및 컨설팅 관련 */}
       <Route path={ROUTES.USABILITY_SERVICE} element={<UsabilityServicePage />} />
       <Route path={ROUTES.PURCHASE_CONSULTING} element={<PurchaseConsultingPage />} />
-      <Route path={ROUTES.USABILITY_CONSULTING} element={<UsabilityConsultingPage />} />
-      
       {/* 자료실 관련 */}
       <Route path={ROUTES.RESOURCE_CENTER} element={<ResourceCenterPage />} />
       <Route path={ROUTES.RESOURCE_LECTURE} element={<ResourceLecturePage />} />

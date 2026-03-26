@@ -29,14 +29,7 @@ const navigationItems: NavigationItem[] = [
   { label: '시뮬레이터', to: ROUTES.SIMULATOR },
   { label: '브랜드관', to: ROUTES.BRANDS },
   { label: '사용성 서비스', to: ROUTES.USABILITY_SERVICE },
-  {
-    label: '컨설팅',
-    to: ROUTES.PURCHASE_CONSULTING,
-    subItems: [
-      { label: '구매컨설팅', to: ROUTES.PURCHASE_CONSULTING },
-      { label: 'AS 컨설팅', to: ROUTES.USABILITY_CONSULTING },
-    ]
-  },
+  { label: '컨설팅', to: ROUTES.PURCHASE_CONSULTING },
   {
     label: '자료실',
     to: ROUTES.RESOURCE_CENTER,
