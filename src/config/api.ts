@@ -86,4 +86,18 @@ export const API_ENDPOINTS = {
   FEATURED_PRODUCTS: '/featured-products',
   FEATURED_PRODUCT: (id: string) => `/featured-products/${id}`,
   FEATURED_PRODUCTS_REORDER: '/featured-products/reorder',
+
+  // Stats (통계)
+  STATS: '/stats',
+  STATS_VISIT: '/stats/visit',
+
+  // Product Recommendations (장비 연결)
+  PRODUCT_RECOMMENDATIONS: (id: string) => `/products/${id}/recommendations`,
+  PRODUCT_RECOMMENDATION: (id: string, recId: string) => `/products/${id}/recommendations/${recId}`,
+
+  // Consulting Status (관리자)
+  CONSULTING_STATUS: (id: string) => `/consulting/${id}/status`,
+
+  // Inquiries (관리자 답변)
+  INQUIRY_ANSWER: (productId: string, inquiryId: string) => `/products/${productId}/inquiries/${inquiryId}/answer`,
 } as const;

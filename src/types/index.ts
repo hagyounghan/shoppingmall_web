@@ -200,12 +200,17 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   NAVER_PAY: '네이버페이',
 };
 
-export type OrderStatus = 'PENDING' | 'PAID' | 'CANCELLED';
+export type OrderStatus = 'PENDING' | 'PAID' | 'CONFIRMED' | 'SHIPPING' | 'DELIVERED' | 'CANCELLED' | 'REFUNDING' | 'REFUNDED';
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: '결제대기',
   PAID: '결제완료',
+  CONFIRMED: '주문확인',
+  SHIPPING: '배송중',
+  DELIVERED: '배송완료',
   CANCELLED: '취소됨',
+  REFUNDING: '환불신청',
+  REFUNDED: '환불완료',
 };
 
 export interface CreateOrderRequest {
