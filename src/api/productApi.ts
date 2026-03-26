@@ -32,6 +32,12 @@ export async function getProductDetail(id: string): Promise<ProductDetail> {
   return apiGet<ProductDetail>(API_ENDPOINTS.PRODUCT_DETAIL(id));
 }
 
+export async function getProductsByCategory(categoryId: string): Promise<Product[]> {
+  const data = await apiGet<Product[] | PaginatedProducts>(API_ENDPOINTS.PRODUCTS_BY_CATEGORY(categoryId));
+  if (Array.isArray(data)) return data;
+  return (data as PaginatedProducts).data || [];
+}
+
 export async function getCategories(): Promise<Category[]> {
   const data = await apiGet<Category[] | { data: Category[] }>(API_ENDPOINTS.CATEGORIES);
   return Array.isArray(data) ? data : data.data || [];

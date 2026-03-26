@@ -3,31 +3,38 @@ import { useParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
 import { Product } from '../../types';
 import { CATEGORIES } from '../../constants/categories';
-import { getProducts, getTopProducts } from '../../api/productApi';
+import { getMainCategories, getProductsByCategory, getTopProducts } from '../../api/productApi';
 
 export function CategoryPage() {
-  const { categoryId } = useParams<{ categoryId: string }>();
+  const { categoryId: urlId } = useParams<{ categoryId: string }>();
 
-  const localCategory = CATEGORIES.find((c) => c.id === categoryId);
-  const categoryName = localCategory?.name || '제품';
+  const localCategory = CATEGORIES.find((c) => c.id === urlId);
+  const [categoryName, setCategoryName] = useState(localCategory?.name || '제품');
 
   const [products, setProducts] = useState<Product[]>([]);
   const [topProducts, setTopProducts] = useState<(Product & { rank: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!categoryId) return;
+    if (!localCategory) return;
 
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        const [productsResponse, topProductsData] = await Promise.all([
-          getProducts({ categoryId }),
+        // 서버 카테고리 목록 조회 → 이름으로 ID 추출
+        const serverCategories = await getMainCategories();
+        const matched = serverCategories.find((c) => c.name === localCategory.name);
+        const serverId = matched?.id ?? urlId!;
+
+        setCategoryName(matched?.name ?? localCategory.name);
+
+        const [categoryProducts, topProductsData] = await Promise.all([
+          getProductsByCategory(serverId),
           getTopProducts(5),
         ]);
 
-        setProducts(productsResponse.data || []);
+        setProducts(categoryProducts);
 
         if (Array.isArray(topProductsData)) {
           setTopProducts(topProductsData.map((p, i) => ({ ...p, rank: i + 1 })));
@@ -42,7 +49,7 @@ export function CategoryPage() {
     };
 
     fetchData();
-  }, [categoryId]);
+  }, [urlId]);
 
   return (
     <div className="min-h-screen bg-white">
