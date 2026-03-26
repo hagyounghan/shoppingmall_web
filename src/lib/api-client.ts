@@ -71,7 +71,14 @@ async function apiRequest<T>(
       return undefined as T;
     }
 
-    return await response.json();
+    const json = await response.json();
+
+    // 서버 공통 응답 래퍼 { success, data, timestamp } 자동 언래핑
+    if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+      return json.data as T;
+    }
+
+    return json as T;
   } catch (error) {
     clearTimeout(timeoutId);
 
