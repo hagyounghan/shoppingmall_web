@@ -33,12 +33,9 @@ export async function getProductDetail(id: string): Promise<ProductDetail> {
 }
 
 export async function getProductsByMainCategory(categoryId: string): Promise<Product[]> {
-  const data = await apiGet<unknown>(API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(categoryId));
-  if (Array.isArray(data)) return data as Product[];
-  if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as PaginatedProducts).data)) {
-    return (data as PaginatedProducts).data;
-  }
-  return [];
+  // 서버 응답: { success, data: { data: Product[], total, page, ... }, timestamp }
+  const res = await apiGet<{ data: PaginatedProducts }>(API_ENDPOINTS.PRODUCTS_BY_MAIN_CATEGORY(categoryId));
+  return res?.data?.data ?? [];
 }
 
 export async function getCategories(): Promise<Category[]> {
