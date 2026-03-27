@@ -348,6 +348,37 @@ export interface Notice {
 }
 
 // ==========================================
+// 9-0. 상품 리뷰 (Review)
+// ==========================================
+export interface ReviewReply {
+  id: string;
+  adminId: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReviewItem {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  rating: number;
+  content: string;
+  reply: ReviewReply | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaginatedReviews {
+  data: ReviewItem[];
+  total: number;
+  page: number;
+  take: number;
+  totalPages: number;
+}
+
+// ==========================================
 // 9-1. 상품 문의 (Inquiry)
 // ==========================================
 export interface InquiryAnswer {
@@ -369,6 +400,14 @@ export interface InquiryItem {
   answer: InquiryAnswer | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PaginatedInquiries {
+  data: InquiryItem[];
+  total: number;
+  page: number;
+  take: number;
+  totalPages: number;
 }
 
 // ==========================================

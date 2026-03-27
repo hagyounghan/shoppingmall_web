@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Minus, Plus, ShoppingCart, Heart, MessageCircle, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Heart, MessageCircle, HelpCircle, ChevronLeft, ChevronRight, Star, LogIn, ChevronDown, ChevronUp } from 'lucide-react';
 import { ImageWithFallback } from '@shared/components/figma/ImageWithFallback';
 import { useCart } from '@features/cart';
 import { useWishlist } from '@features/wishlist';
 import { useAuth } from '@features/auth';
-import { RelatedProduct } from '@shared/types';
+import { RelatedProduct, ReviewItem, PaginatedReviews, InquiryItem, PaginatedInquiries } from '@shared/types';
 import { formatPrice } from '@shared/utils/format';
 import { useProductDetail } from '@features/products';
+import { apiGet, apiPost, apiDelete } from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/config/api';
 import {
   Dialog,
   DialogContent,
@@ -52,7 +54,7 @@ export function ProductDetailPage() {
 
   const { addItem } = useCart();
   const { isInWishlist, addItem: addToWishlist, removeByProductId } = useWishlist();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const { data: product, isLoading, isError } = useProductDetail(id ?? '');
 
@@ -581,17 +583,19 @@ export function ProductDetailPage() {
             )}
 
             {selectedTab === 'review' && (
-              <div className="py-16 text-center text-muted-foreground">
-                <p className="text-lg mb-2">상품 리뷰 기능은 준비 중입니다.</p>
-                <p className="text-sm">서버 연동 후 이용하실 수 있습니다.</p>
-              </div>
+              <ProductReviews
+                productId={product.id}
+                isAuthenticated={isAuthenticated}
+                currentUserId={user?.id}
+              />
             )}
 
             {selectedTab === 'qna' && (
-              <div className="py-16 text-center text-muted-foreground">
-                <p className="text-lg mb-2">상품 문의 기능은 준비 중입니다.</p>
-                <p className="text-sm">서버 연동 후 이용하실 수 있습니다.</p>
-              </div>
+              <ProductInquiries
+                productId={product.id}
+                isAuthenticated={isAuthenticated}
+                currentUserId={user?.id}
+              />
             )}
 
             {selectedTab === 'delivery' && (
@@ -619,7 +623,367 @@ export function ProductDetailPage() {
 }
 
 
+// ─────────────────────────────────────────────────────────────
+// 상품 리뷰 컴포넌트
+// ─────────────────────────────────────────────────────────────
+function StarRating({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={`w-5 h-5 ${n <= value ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground'} ${onChange ? 'cursor-pointer hover:text-yellow-400' : ''}`}
+          onClick={() => onChange?.(n)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ProductReviews({
+  productId,
+  isAuthenticated,
+  currentUserId,
+}: {
+  productId: string;
+  isAuthenticated: boolean;
+  currentUserId?: string;
+}) {
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [content, setContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const navigate = useNavigate();
+  const TAKE = 5;
+
+  const fetchReviews = useCallback(async (p: number) => {
+    setLoading(true);
+    try {
+      const res = await apiGet<PaginatedReviews>(`${API_ENDPOINTS.PRODUCT_REVIEWS(productId)}?page=${p}&take=${TAKE}`);
+      setReviews(res.data);
+      setTotal(res.total);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
+
+  useEffect(() => { fetchReviews(page); }, [fetchReviews, page]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (content.length < 10) { setSubmitError('리뷰 내용을 10자 이상 입력해주세요.'); return; }
+    setSubmitError('');
+    setSubmitting(true);
+    try {
+      await apiPost(API_ENDPOINTS.PRODUCT_REVIEWS(productId), { rating, content });
+      setContent('');
+      setRating(5);
+      setShowForm(false);
+      setPage(1);
+      fetchReviews(1);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : '리뷰 작성 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (reviewId: string) => {
+    if (!confirm('리뷰를 삭제하시겠습니까?')) return;
+    try {
+      await apiDelete(API_ENDPOINTS.PRODUCT_REVIEW(productId, reviewId));
+      fetchReviews(page);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const totalPages = Math.ceil(total / TAKE);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl">상품 리뷰 <span className="text-muted-foreground text-base">({total})</span></h3>
+        {isAuthenticated ? (
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm hover:bg-accent transition-colors"
+          >
+            {showForm ? '취소' : '리뷰 작성'}
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate('/login')}
+            className="flex items-center gap-1 px-4 py-2 border border-border text-sm hover:bg-secondary transition-colors"
+          >
+            <LogIn className="w-4 h-4" />
+            로그인 후 리뷰 작성
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="mb-8 p-6 border border-border bg-secondary/30">
+          <p className="text-sm font-semibold mb-3">평점</p>
+          <StarRating value={rating} onChange={setRating} />
+          <p className="text-sm font-semibold mt-4 mb-2">리뷰 내용 <span className="text-muted-foreground font-normal">(최소 10자)</span></p>
+          <textarea
+            rows={4}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="상품을 구매하신 소감을 적어주세요."
+            className="w-full px-4 py-3 border border-border bg-white resize-none text-sm"
+            maxLength={1000}
+          />
+          <p className="text-xs text-muted-foreground text-right mt-1">{content.length}/1000</p>
+          {submitError && <p className="text-sm text-destructive mt-2">{submitError}</p>}
+          <div className="flex justify-end gap-2 mt-4">
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-border text-sm hover:bg-secondary transition-colors">취소</button>
+            <button type="submit" disabled={submitting} className="px-4 py-2 bg-primary text-primary-foreground text-sm hover:bg-accent transition-colors disabled:opacity-50">
+              {submitting ? '등록 중...' : '리뷰 등록'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <p className="py-12 text-center text-muted-foreground">불러오는 중...</p>
+      ) : reviews.length === 0 ? (
+        <div className="py-16 text-center text-muted-foreground">
+          <Star className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p>아직 작성된 리뷰가 없습니다.</p>
+          <p className="text-sm mt-1">첫 번째 리뷰를 작성해보세요!</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {reviews.map((review) => (
+            <div key={review.id} className="border-b border-border pb-6">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <StarRating value={review.rating} />
+                  <p className="text-sm font-semibold mt-1">{review.userName}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString('ko-KR')}</p>
+                </div>
+                {currentUserId === review.userId && (
+                  <button onClick={() => handleDelete(review.id)} className="text-xs text-muted-foreground hover:text-destructive transition-colors">삭제</button>
+                )}
+              </div>
+              <p className="text-sm mt-2 leading-relaxed">{review.content}</p>
+              {review.reply && (
+                <div className="mt-3 p-3 bg-secondary/50 border-l-2 border-primary text-sm">
+                  <p className="text-xs font-semibold text-primary mb-1">판매자 답변</p>
+                  <p className="text-muted-foreground">{review.reply.content}</p>
+                </div>
+              )}
+            </div>
+          ))}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 pt-2">
+              <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1 border border-border text-sm disabled:opacity-30 hover:bg-secondary transition-colors">이전</button>
+              <span className="px-3 py-1 text-sm text-muted-foreground">{page} / {totalPages}</span>
+              <button disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1 border border-border text-sm disabled:opacity-30 hover:bg-secondary transition-colors">다음</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// 상품 문의 컴포넌트
+// ─────────────────────────────────────────────────────────────
+function ProductInquiries({
+  productId,
+  isAuthenticated,
+  currentUserId,
+}: {
+  productId: string;
+  isAuthenticated: boolean;
+  currentUserId?: string;
+}) {
+  const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const TAKE = 10;
+
+  const fetchInquiries = useCallback(async (p: number) => {
+    setLoading(true);
+    try {
+      const res = await apiGet<PaginatedInquiries>(`${API_ENDPOINTS.PRODUCT_INQUIRIES(productId)}?page=${p}&take=${TAKE}`);
+      setInquiries(res.data);
+      setTotal(res.total);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
+
+  useEffect(() => { fetchInquiries(page); }, [fetchInquiries, page]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) { setSubmitError('문의 제목을 입력해주세요.'); return; }
+    if (content.length < 5) { setSubmitError('문의 내용을 5자 이상 입력해주세요.'); return; }
+    setSubmitError('');
+    setSubmitting(true);
+    try {
+      await apiPost(API_ENDPOINTS.PRODUCT_INQUIRIES(productId), { title: title.trim(), content });
+      setTitle('');
+      setContent('');
+      setShowForm(false);
+      setPage(1);
+      fetchInquiries(1);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : '문의 작성 중 오류가 발생했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (inquiryId: string) => {
+    if (!confirm('문의를 삭제하시겠습니까?')) return;
+    try {
+      await apiDelete(API_ENDPOINTS.PRODUCT_INQUIRY(productId, inquiryId));
+      fetchInquiries(page);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const totalPages = Math.ceil(total / TAKE);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl">상품 문의 <span className="text-muted-foreground text-base">({total})</span></h3>
+        {isAuthenticated ? (
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm hover:bg-accent transition-colors"
+          >
+            {showForm ? '취소' : '문의 작성'}
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate('/login')}
+            className="flex items-center gap-1 px-4 py-2 border border-border text-sm hover:bg-secondary transition-colors"
+          >
+            <LogIn className="w-4 h-4" />
+            로그인 후 문의 작성
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="mb-8 p-6 border border-border bg-secondary/30">
+          <p className="text-sm font-semibold mb-2">문의 제목</p>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="문의 제목을 입력해주세요"
+            className="w-full px-4 py-3 border border-border bg-white text-sm mb-4"
+            maxLength={200}
+          />
+          <p className="text-sm font-semibold mb-2">문의 내용 <span className="text-muted-foreground font-normal">(최소 5자)</span></p>
+          <textarea
+            rows={5}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="문의 내용을 입력해주세요."
+            className="w-full px-4 py-3 border border-border bg-white resize-none text-sm"
+            maxLength={2000}
+          />
+          <p className="text-xs text-muted-foreground text-right mt-1">{content.length}/2000</p>
+          {submitError && <p className="text-sm text-destructive mt-2">{submitError}</p>}
+          <div className="flex justify-end gap-2 mt-4">
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-border text-sm hover:bg-secondary transition-colors">취소</button>
+            <button type="submit" disabled={submitting} className="px-4 py-2 bg-primary text-primary-foreground text-sm hover:bg-accent transition-colors disabled:opacity-50">
+              {submitting ? '등록 중...' : '문의 등록'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <p className="py-12 text-center text-muted-foreground">불러오는 중...</p>
+      ) : inquiries.length === 0 ? (
+        <div className="py-16 text-center text-muted-foreground">
+          <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p>아직 작성된 문의가 없습니다.</p>
+        </div>
+      ) : (
+        <div className="border-t border-border">
+          {inquiries.map((inquiry) => {
+            const isOwner = currentUserId === inquiry.userId;
+            const isExpanded = expandedId === inquiry.id;
+            return (
+              <div key={inquiry.id} className="border-b border-border">
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(isExpanded ? null : inquiry.id)}
+                  className="w-full flex items-center gap-3 px-4 py-4 hover:bg-secondary/30 transition-colors text-left"
+                >
+                  <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${inquiry.isAnswered ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {inquiry.isAnswered ? '답변완료' : '답변대기'}
+                  </span>
+                  <span className="flex-1 text-sm font-medium truncate">{inquiry.title}</span>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">{inquiry.userName}</span>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">{new Date(inquiry.createdAt).toLocaleDateString('ko-KR')}</span>
+                  {isExpanded ? <ChevronUp className="w-4 h-4 flex-shrink-0 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 flex-shrink-0 text-muted-foreground" />}
+                </button>
+                {isExpanded && (
+                  <div className="px-4 pb-4 bg-secondary/10">
+                    <div className="p-4 bg-white border border-border text-sm leading-relaxed">{inquiry.content}</div>
+                    {inquiry.answer && (
+                      <div className="mt-3 p-4 bg-white border-l-2 border-primary text-sm">
+                        <p className="text-xs font-semibold text-primary mb-2">판매자 답변 · {new Date(inquiry.answer.createdAt).toLocaleDateString('ko-KR')}</p>
+                        <p className="text-muted-foreground leading-relaxed">{inquiry.answer.content}</p>
+                      </div>
+                    )}
+                    {isOwner && (
+                      <div className="flex justify-end mt-2">
+                        <button onClick={() => handleDelete(inquiry.id)} className="text-xs text-muted-foreground hover:text-destructive transition-colors">삭제</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 pt-4">
+              <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1 border border-border text-sm disabled:opacity-30 hover:bg-secondary transition-colors">이전</button>
+              <span className="px-3 py-1 text-sm text-muted-foreground">{page} / {totalPages}</span>
+              <button disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1 border border-border text-sm disabled:opacity-30 hover:bg-secondary transition-colors">다음</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // 연관 상품 선택 컴포넌트 (useState/useEffect를 루프 밖으로 분리)
+// ─────────────────────────────────────────────────────────────
 function RelatedProductSelector({
   category,
   rps,

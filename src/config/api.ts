@@ -116,4 +116,12 @@ export const API_ENDPOINTS = {
 
   // Inquiries (관리자 답변)
   INQUIRY_ANSWER: (productId: string, inquiryId: string) => `/products/${productId}/inquiries/${inquiryId}/answer`,
+
+  // Product Reviews (상품 리뷰)
+  PRODUCT_REVIEWS: (productId: string) => `/products/${productId}/reviews`,
+  PRODUCT_REVIEW: (productId: string, reviewId: string) => `/products/${productId}/reviews/${reviewId}`,
+
+  // Product Inquiries (상품 문의)
+  PRODUCT_INQUIRIES: (productId: string) => `/products/${productId}/inquiries`,
+  PRODUCT_INQUIRY: (productId: string, inquiryId: string) => `/products/${productId}/inquiries/${inquiryId}`,
 } as const;
