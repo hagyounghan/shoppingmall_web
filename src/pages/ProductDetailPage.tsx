@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Minus, Plus, ShoppingCart, Heart, MessageCircle, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ImageWithFallback } from '@shared/components/figma/ImageWithFallback';
 import { useCart } from '@features/cart';
 import { useWishlist } from '@features/wishlist';
 import { useAuth } from '@features/auth';
-import { RelatedProduct } from '@shared/types';
+import { RelatedProduct, ProductCompanionGroup } from '@shared/types';
 import { formatPrice } from '@shared/utils/format';
 import { useProductDetail } from '@features/products';
 import {
@@ -31,11 +31,14 @@ const categoryDescriptions: Record<string, string> = {
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [selectedImageIdx, setSelectedImageIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedTab, setSelectedTab] = useState('detail');
   const [selectedOption, setSelectedOption] = useState('');
   const [selectedRelatedProducts, setSelectedRelatedProducts] = useState<Record<string, string>>({});
+  // 같이 구매: key=groupId, value=companionProductId
+  const [selectedCompanions, setSelectedCompanions] = useState<Record<string, string>>({});
   const [thumbOffset, setThumbOffset] = useState(0);
   const [cartToast, setCartToast] = useState(false);
 
@@ -102,18 +105,34 @@ export function ProductDetailPage() {
       return sum;
     }, 0);
 
-  const getTotalPrice = () => product.price * quantity + getRelatedExtraPrice();
+  const getCompanionExtraPrice = () =>
+    Object.entries(selectedCompanions).reduce((sum, [groupId, productId]) => {
+      const group = (product.companionGroups ?? []).find((g) => g.id === groupId);
+      const item = group?.items.find((i) => i.product.id === productId);
+      return item ? sum + item.product.price : sum;
+    }, 0);
+
+  const useCompanionGroups = (product.companionGroups ?? []).length > 0;
+
+  const getTotalPrice = () =>
+    product.price * quantity +
+    (useCompanionGroups ? getCompanionExtraPrice() : getRelatedExtraPrice());
 
   const handleAddToCart = async () => {
     const optionId = product.options.find((o) => o.name === selectedOption)?.id;
     await addItem(product, quantity, optionId);
 
-    for (const pid of Object.values(selectedRelatedProducts)) {
-      for (const rps of Object.values(relatedProductsByCategory)) {
-        const rp = rps.find((r) => r.product.id === pid);
-        if (rp) {
-          await addItem(rp.product, 1);
-          break;
+    if (useCompanionGroups) {
+      for (const [groupId, productId] of Object.entries(selectedCompanions)) {
+        const group = (product.companionGroups ?? []).find((g) => g.id === groupId);
+        const item = group?.items.find((i) => i.product.id === productId);
+        if (item) await addItem(item.product, 1);
+      }
+    } else {
+      for (const pid of Object.values(selectedRelatedProducts)) {
+        for (const rps of Object.values(relatedProductsByCategory)) {
+          const rp = rps.find((r) => r.product.id === pid);
+          if (rp) { await addItem(rp.product, 1); break; }
         }
       }
     }
@@ -236,13 +255,48 @@ export function ProductDetailPage() {
                 )}
               </div>
             )}
+
+            {/* 시리즈 모델 선택 */}
+            {product.series && product.series.products.length > 1 && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-2 font-medium">{product.series.name}</p>
+                <div className="flex gap-2 flex-wrap">
+                  {product.series.products.map((sp) => (
+                    <button
+                      key={sp.id}
+                      onClick={() => navigate(`/products/${sp.id}`)}
+                      className={`flex flex-col items-center gap-1 p-2 border transition-colors ${
+                        sp.id === product.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary'
+                      }`}
+                      style={{ minWidth: '72px', maxWidth: '88px' }}
+                    >
+                      <div className="w-14 h-14 bg-muted overflow-hidden">
+                        {sp.image ? (
+                          <ImageWithFallback src={sp.image} alt={sp.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-slate-100" />
+                        )}
+                      </div>
+                      <span className={`text-[10px] text-center leading-tight break-all ${sp.id === product.id ? 'text-primary font-bold' : 'text-muted-foreground'}`}>
+                        {sp.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Product Details */}
           <div className="space-y-6">
             <div>
+              {product.series && (
+                <p className="text-sm text-muted-foreground mb-1">{product.series.name}</p>
+              )}
               <h1 className="text-2xl mb-4">{product.name}</h1>
-              <p className="text-3xl text-primary">{product.price.toLocaleString()}원</p>
+              <p className="text-3xl text-primary">{product.price.toLocaleString()}원~</p>
             </div>
 
             <div className="border-t border-b border-border py-6 space-y-6">
@@ -291,33 +345,63 @@ export function ProductDetailPage() {
                 </div>
               </div>
 
-              {/* 연관 상품 선택 */}
-              {Object.entries(relatedProductsByCategory).map(([category, rps]) => (
-                <RelatedProductSelector
-                  key={category}
-                  category={category}
-                  rps={rps}
-                  selected={selectedRelatedProducts[category] || ''}
-                  onChange={(pid) => handleRelatedProductChange(category, pid)}
-                />
-              ))}
+              {/* 같이 구매 (companionGroups 우선, 없으면 기존 relatedProducts) */}
+              {useCompanionGroups
+                ? (product.companionGroups ?? []).map((group) => (
+                    <CompanionGroupSelector
+                      key={group.id}
+                      group={group}
+                      selected={selectedCompanions[group.id] || ''}
+                      onChange={(pid) =>
+                        setSelectedCompanions((prev) => {
+                          const next = { ...prev };
+                          if (pid === '') delete next[group.id];
+                          else next[group.id] = pid;
+                          return next;
+                        })
+                      }
+                    />
+                  ))
+                : Object.entries(relatedProductsByCategory).map(([category, rps]) => (
+                    <RelatedProductSelector
+                      key={category}
+                      category={category}
+                      rps={rps}
+                      selected={selectedRelatedProducts[category] || ''}
+                      onChange={(pid) => handleRelatedProductChange(category, pid)}
+                    />
+                  ))
+              }
 
               {/* 합계 */}
               <div className="pt-4 border-t border-border space-y-2">
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>단가</span>
+                  <span>본체</span>
                   <span>{formatPrice(product.price)} × {quantity}</span>
                 </div>
-                {Object.entries(selectedRelatedProducts).map(([category]) => {
-                  const rp = getSelectedRelated(category);
-                  if (!rp) return null;
-                  return (
-                    <div key={category} className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{categoryLabels[category] || category}</span>
-                      <span>{rp.product.name} ({formatPrice(rp.product.price)})</span>
-                    </div>
-                  );
-                })}
+                {useCompanionGroups
+                  ? Object.entries(selectedCompanions).map(([groupId, productId]) => {
+                      const group = (product.companionGroups ?? []).find((g) => g.id === groupId);
+                      const item = group?.items.find((i) => i.product.id === productId);
+                      if (!item) return null;
+                      return (
+                        <div key={groupId} className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>{group?.label}</span>
+                          <span>{item.product.name} (+{formatPrice(item.product.price)})</span>
+                        </div>
+                      );
+                    })
+                  : Object.entries(selectedRelatedProducts).map(([category]) => {
+                      const rp = getSelectedRelated(category);
+                      if (!rp) return null;
+                      return (
+                        <div key={category} className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>{categoryLabels[category] || category}</span>
+                          <span>{rp.product.name} ({formatPrice(rp.product.price)})</span>
+                        </div>
+                      );
+                    })
+                }
                 <div className="flex items-center justify-between text-xl font-bold pt-2 border-t border-border">
                   <span>합계</span>
                   <span className="text-primary">{formatPrice(getTotalPrice())}</span>
@@ -434,6 +518,41 @@ export function ProductDetailPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// 같이 구매 그룹 선택 컴포넌트
+function CompanionGroupSelector({
+  group,
+  selected,
+  onChange,
+}: {
+  group: ProductCompanionGroup;
+  selected: string;
+  onChange: (productId: string) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-muted-foreground">✓</span>
+        <label className="font-semibold">{group.label}</label>
+        <span className={`text-xs px-2 py-0.5 rounded-full ${group.isRequired ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+          {group.isRequired ? '필수' : '선택'}
+        </span>
+      </div>
+      <select
+        value={selected}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-4 py-3 border border-border bg-white"
+      >
+        <option value="">{group.isRequired ? '- [필수] 옵션을 선택해 주세요 -' : '- [선택] 옵션을 선택해 주세요 -'}</option>
+        {group.items.map((item) => (
+          <option key={item.id} value={item.product.id}>
+            {item.product.name} (+{formatPrice(item.product.price)})
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

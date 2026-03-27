@@ -53,6 +53,35 @@ export interface RelatedProduct {
   order: number;
 }
 
+export interface ProductSeriesInfo {
+  id: string;
+  name: string;
+  products: { id: string; name: string; price: number; image: string | null }[];
+}
+
+export interface ProductCompanionItem {
+  id: string;
+  product: Product;
+  order: number;
+}
+
+export interface ProductCompanionGroup {
+  id: string;
+  label: string;
+  isRequired: boolean;
+  order: number;
+  items: ProductCompanionItem[];
+}
+
+export interface ProductSeriesRecord {
+  id: string;
+  name: string;
+  slug: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -62,6 +91,7 @@ export interface Product {
   tag: 'BEST' | 'NEW' | 'SALE' | null;
   brandId: string;
   categoryId: string;
+  seriesId?: string | null;
   stock: number;
   discountRate: number;
   rating: number;
@@ -77,7 +107,10 @@ export interface Product {
 export interface ProductDetail extends Product {
   images: ProductImage[];
   options: ProductOption[];
+  htmlDescription?: string | null;
   relatedProducts: RelatedProduct[];
+  series: ProductSeriesInfo | null;
+  companionGroups: ProductCompanionGroup[];
 }
 
 // ==========================================

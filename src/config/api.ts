@@ -95,6 +95,17 @@ export const API_ENDPOINTS = {
   PRODUCT_RECOMMENDATIONS: (id: string) => `/products/${id}/recommendations`,
   PRODUCT_RECOMMENDATION: (id: string, recId: string) => `/products/${id}/recommendations/${recId}`,
 
+  // Product Series (시리즈)
+  PRODUCT_SERIES: '/products/series',
+  PRODUCT_SERIES_ITEM: (seriesId: string) => `/products/series/${seriesId}`,
+  PRODUCT_ASSIGN_SERIES: (productId: string) => `/products/${productId}/series`,
+
+  // Product Companion Groups (같이 구매)
+  PRODUCT_COMPANION_GROUPS: (productId: string) => `/products/${productId}/companion-groups`,
+  PRODUCT_COMPANION_GROUP: (productId: string, groupId: string) => `/products/${productId}/companion-groups/${groupId}`,
+  PRODUCT_COMPANION_ITEMS: (productId: string, groupId: string) => `/products/${productId}/companion-groups/${groupId}/items`,
+  PRODUCT_COMPANION_ITEM: (productId: string, groupId: string, itemId: string) => `/products/${productId}/companion-groups/${groupId}/items/${itemId}`,
+
   // Consulting Status (관리자)
   CONSULTING_STATUS: (id: string) => `/consulting/${id}/status`,
 
