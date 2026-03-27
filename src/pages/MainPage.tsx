@@ -40,14 +40,17 @@ export function MainPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     Promise.all([
       apiGet<SimulatorSet[]>(API_ENDPOINTS.SIMULATOR_PRESETS('fishing_vessel')),
       apiGet<SimulatorSet[]>(API_ENDPOINTS.SIMULATOR_PRESETS('leisure')),
     ]).then(([fishing, leisure]) => {
+      if (!isMounted) return;
       const f = Array.isArray(fishing) ? fishing : [];
       const l = Array.isArray(leisure) ? leisure : [];
       setAllSets([...f, ...l]);
     }).catch(() => {});
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {

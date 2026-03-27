@@ -50,11 +50,13 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       setItems([]);
       return;
     }
+    let isMounted = true;
     setIsLoading(true);
     apiGet<WishlistItemServerResponse[]>(API_ENDPOINTS.WISHLIST)
-      .then((res) => setItems(res.map(serverToUI)))
-      .catch(() => setItems([]))
-      .finally(() => setIsLoading(false));
+      .then((res) => { if (isMounted) setItems(res.map(serverToUI)); })
+      .catch(() => { if (isMounted) setItems([]); })
+      .finally(() => { if (isMounted) setIsLoading(false); });
+    return () => { isMounted = false; };
   }, [isAuthenticated]);
 
   const addItem = async (product: Product) => {

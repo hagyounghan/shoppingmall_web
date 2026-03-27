@@ -39,20 +39,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     const userStr = localStorage.getItem(AUTH_USER_KEY);
 
     if (!token || !userStr) {
       setLoading(false);
-      return;
+      return () => { isMounted = false; };
     }
 
     // 토큰 유효성 서버에서 확인
     apiGet<AuthUser>(API_ENDPOINTS.ME)
       .then((me) => {
-        setUser({ ...me, token });
+        if (isMounted) setUser({ ...me, token });
       })
       .catch((err) => {
+        if (!isMounted) return;
         if (err instanceof ApiClientError && err.status === 401) {
           clearAuth();
         } else {
@@ -65,7 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (isMounted) setLoading(false); });
+
+    return () => { isMounted = false; };
   }, []);
 
   const login = async (email: string, password: string): Promise<AuthUser> => {

@@ -63,6 +63,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // 인증 상태 변경 시 장바구니 동기화
   useEffect(() => {
+    let isMounted = true;
     const wasAuthenticated = prevAuth.current;
     prevAuth.current = isAuthenticated;
 
@@ -81,14 +82,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
             // 이미 있는 항목 등 무시
           }
         }
+        if (!isMounted) return;
         if (localItems.length > 0) {
           localStorage.removeItem(CART_STORAGE_KEY);
         }
         try {
           const serverItems = await apiGet<CartItemServerResponse[]>(API_ENDPOINTS.CART);
-          setItems(serverItems.map(serverToUI));
+          if (isMounted) setItems(serverItems.map(serverToUI));
         } catch {
-          setItems([]);
+          if (isMounted) setItems([]);
         }
       };
       mergeAndFetch();
@@ -99,6 +101,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // 초기 비로그인
       setItems(loadLocalCart());
     }
+
+    return () => { isMounted = false; };
   }, [isAuthenticated]);
 
   const addItem = async (product: Product, quantity = 1, optionId?: string) => {

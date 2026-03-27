@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Minus, Plus, ShoppingCart, Heart, MessageCircle, HelpCircle, ChevronLeft, ChevronRight, Star, LogIn, ChevronDown, ChevronUp } from 'lucide-react';
 import { ImageWithFallback } from '@shared/components/figma/ImageWithFallback';
@@ -41,6 +41,7 @@ export function ProductDetailPage() {
   const [selectedCompanions, setSelectedCompanions] = useState<Record<string, string>>({});
   const [thumbOffset, setThumbOffset] = useState(0);
   const [cartToast, setCartToast] = useState(false);
+  const cartToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 개별 수량 관리 (옵션/동반상품 각각)
   const [orderItems, setOrderItems] = useState<{
@@ -57,6 +58,11 @@ export function ProductDetailPage() {
   const { isAuthenticated, user } = useAuth();
 
   const { data: product, isLoading, isError } = useProductDetail(id ?? '');
+
+  // 언마운트 시 cartToast 타이머 정리
+  useEffect(() => {
+    return () => { if (cartToastTimer.current) clearTimeout(cartToastTimer.current); };
+  }, []);
 
   // 옵션이 없으면 기본 상품을 orderItems에 초기화 (훅은 early return 위에 있어야 함)
   useEffect(() => {
@@ -201,7 +207,8 @@ export function ProductDetailPage() {
       }
     }
     setCartToast(true);
-    setTimeout(() => setCartToast(false), 2500);
+    if (cartToastTimer.current) clearTimeout(cartToastTimer.current);
+    cartToastTimer.current = setTimeout(() => setCartToast(false), 2500);
   };
 
   const inWishlist = isInWishlist(product.id);
