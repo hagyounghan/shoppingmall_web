@@ -95,6 +95,10 @@ export const API_ENDPOINTS = {
   PRODUCT_RECOMMENDATIONS: (id: string) => `/products/${id}/recommendations`,
   PRODUCT_RECOMMENDATION: (id: string, recId: string) => `/products/${id}/recommendations/${recId}`,
 
+  // Product Options (모델)
+  PRODUCT_OPTIONS: (productId: string) => `/products/${productId}/options`,
+  PRODUCT_OPTION: (productId: string, optionId: string) => `/products/${productId}/options/${optionId}`,
+
   // Product Series (시리즈)
   PRODUCT_SERIES: '/products/series',
   PRODUCT_SERIES_ITEM: (seriesId: string) => `/products/series/${seriesId}`,

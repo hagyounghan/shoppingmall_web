@@ -183,6 +183,20 @@ export default function AdminDashboard() {
   const [newSeriesName, setNewSeriesName] = useState('');
   const [newSeriesSaving, setNewSeriesSaving] = useState(false);
 
+  // 신규 등록 폼 - 모델 목록
+  const [formModels, setFormModels] = useState<{ tempId: string; name: string; price: string }[]>([]);
+  // 신규 등록 폼 - 연관 카테고리
+  const [formCompanions, setFormCompanions] = useState<{
+    tempId: string;
+    label: string;
+    isRequired: boolean;
+    items: { productId: string; productName: string; price: number }[];
+  }[]>([]);
+  const [formCompanionNewLabel, setFormCompanionNewLabel] = useState('');
+  const [formCompanionSearch, setFormCompanionSearch] = useState('');
+  const [formCompanionSearchResults, setFormCompanionSearchResults] = useState<Product[]>([]);
+  const [formCompanionActiveCatId, setFormCompanionActiveCatId] = useState<string | null>(null);
+
   // 메인/추천 관리 목업 (배너만 유지)
   const banners = [{ id: 1, title: "30년 경력 명장의 선택", subtitle: "최신 해양 장비 특별전", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200", isActive: true }];
 
@@ -403,7 +417,7 @@ export default function AdminDashboard() {
     if (!productForm.name || !productForm.price || !productForm.brandId || !productForm.categoryId) return;
     setFormLoading(true);
     try {
-      await apiPost(API_ENDPOINTS.PRODUCTS, {
+      const created = await apiPost<{ id: string }>(API_ENDPOINTS.PRODUCTS, {
         name: productForm.name,
         price: Number(productForm.price),
         stock: Number(productForm.stock) || 0,
@@ -414,7 +428,40 @@ export default function AdminDashboard() {
         image: productForm.image || undefined,
         description: productForm.description || undefined,
       });
+
+      // 모델(옵션) 저장
+      for (let i = 0; i < formModels.length; i++) {
+        const m = formModels[i];
+        if (m.name.trim()) {
+          await apiPost(API_ENDPOINTS.PRODUCT_OPTIONS(created.id), {
+            name: m.name.trim(),
+            price: Number(m.price) || 0,
+            order: i,
+          });
+        }
+      }
+
+      // 연관 카테고리 + 아이템 저장
+      for (let i = 0; i < formCompanions.length; i++) {
+        const cat = formCompanions[i];
+        if (cat.label.trim()) {
+          const group = await apiPost<{ id: string }>(
+            API_ENDPOINTS.PRODUCT_COMPANION_GROUPS(created.id),
+            { label: cat.label.trim(), isRequired: cat.isRequired, order: i },
+          );
+          for (let j = 0; j < cat.items.length; j++) {
+            await apiPost(
+              API_ENDPOINTS.PRODUCT_COMPANION_ITEMS(created.id, group.id),
+              { companionProductId: cat.items[j].productId, order: j },
+            );
+          }
+        }
+      }
+
       setProductForm(EMPTY_FORM);
+      setFormModels([]);
+      setFormCompanions([]);
+      setFormCompanionNewLabel('');
       setIsAddingProduct(false);
       await loadProducts();
     } catch (err) {
@@ -422,6 +469,14 @@ export default function AdminDashboard() {
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const searchFormCompanionProducts = async (q: string) => {
+    if (!q.trim()) { setFormCompanionSearchResults([]); return; }
+    try {
+      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(q)}&take=10`);
+      setFormCompanionSearchResults(res.data);
+    } catch { setFormCompanionSearchResults([]); }
   };
 
   // 상품 수정
@@ -960,7 +1015,7 @@ export default function AdminDashboard() {
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-black">장비 목록 관리</h2>
               <button
-                onClick={() => { setIsAddingProduct(!isAddingProduct); setProductForm(EMPTY_FORM); setRecProductId(null); }}
+                onClick={() => { setIsAddingProduct(!isAddingProduct); setProductForm(EMPTY_FORM); setFormModels([]); setFormCompanions([]); setFormCompanionNewLabel(''); setRecProductId(null); }}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700"
               >
                 {isAddingProduct ? <X size={18} className="mr-1"/> : <Plus size={18} className="mr-1"/>}
@@ -1041,6 +1096,177 @@ export default function AdminDashboard() {
                       className="p-2 border rounded w-full h-20 resize-none" />
                   </div>
                 </div>
+
+                {/* ── 모델 섹션 ── */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-bold text-slate-700">모델 목록</label>
+                    <button
+                      type="button"
+                      onClick={() => setFormModels(prev => [...prev, { tempId: crypto.randomUUID(), name: '', price: '' }])}
+                      className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded-full flex items-center gap-1"
+                    >
+                      <Plus size={12}/> 모델 추가
+                    </button>
+                  </div>
+                  {formModels.length === 0 && (
+                    <p className="text-xs text-slate-400">모델을 추가하면 상품 상세 페이지에서 선택 가능합니다.</p>
+                  )}
+                  <div className="space-y-2">
+                    {formModels.map((m) => (
+                      <div key={m.tempId} className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          placeholder="모델명 (예: HDS-12 PRO)"
+                          value={m.name}
+                          onChange={(e) => setFormModels(prev => prev.map(x => x.tempId === m.tempId ? { ...x, name: e.target.value } : x))}
+                          className="flex-1 p-2 border rounded text-sm"
+                        />
+                        <input
+                          type="number"
+                          placeholder="금액"
+                          value={m.price}
+                          onChange={(e) => setFormModels(prev => prev.map(x => x.tempId === m.tempId ? { ...x, price: e.target.value } : x))}
+                          className="w-32 p-2 border rounded text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormModels(prev => prev.filter(x => x.tempId !== m.tempId))}
+                          className="text-slate-400 hover:text-red-500"
+                        ><X size={16}/></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── 연관 카테고리 섹션 ── */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-bold text-slate-700">연관 카테고리 (같이 구매)</label>
+                  </div>
+                  {/* 카테고리 빠른 선택 버튼 */}
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {['이미지송수파기','어탐송수파기','헤딩센서','레이더','VHF 무선기','GPS 안테나','자동조타','액티브타켓','트롤링모터'].map(label => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => {
+                          if (!formCompanions.find(c => c.label === label)) {
+                            setFormCompanions(prev => [...prev, { tempId: crypto.randomUUID(), label, isRequired: false, items: [] }]);
+                          }
+                        }}
+                        className={`text-xs px-2 py-1 rounded-full border transition-colors ${formCompanions.find(c => c.label === label) ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+                      >{label}</button>
+                    ))}
+                  </div>
+                  {/* 직접 입력 */}
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      type="text"
+                      placeholder="카테고리명 직접 입력"
+                      value={formCompanionNewLabel}
+                      onChange={(e) => setFormCompanionNewLabel(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && formCompanionNewLabel.trim()) {
+                          setFormCompanions(prev => [...prev, { tempId: crypto.randomUUID(), label: formCompanionNewLabel.trim(), isRequired: false, items: [] }]);
+                          setFormCompanionNewLabel('');
+                        }
+                      }}
+                      className="flex-1 p-2 border rounded text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formCompanionNewLabel.trim()) {
+                          setFormCompanions(prev => [...prev, { tempId: crypto.randomUUID(), label: formCompanionNewLabel.trim(), isRequired: false, items: [] }]);
+                          setFormCompanionNewLabel('');
+                        }
+                      }}
+                      className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded text-sm text-slate-600"
+                    ><Plus size={14}/></button>
+                  </div>
+                  {/* 추가된 카테고리 목록 */}
+                  <div className="space-y-3">
+                    {formCompanions.map((cat) => (
+                      <div key={cat.tempId} className="border rounded-lg p-3 bg-slate-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-slate-700">{cat.label}</span>
+                            <label className="flex items-center gap-1 text-xs text-slate-500">
+                              <input
+                                type="checkbox"
+                                checked={cat.isRequired}
+                                onChange={(e) => setFormCompanions(prev => prev.map(x => x.tempId === cat.tempId ? { ...x, isRequired: e.target.checked } : x))}
+                              /> 필수
+                            </label>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setFormCompanions(prev => prev.filter(x => x.tempId !== cat.tempId))}
+                            className="text-slate-400 hover:text-red-500"
+                          ><X size={14}/></button>
+                        </div>
+                        {/* 카테고리 내 제품 목록 */}
+                        {cat.items.map((item) => (
+                          <div key={item.productId} className="flex items-center justify-between bg-white border rounded px-3 py-1.5 mb-1 text-sm">
+                            <span>{item.productName}</span>
+                            <span className="text-slate-400 text-xs mr-2">{item.price.toLocaleString()}원</span>
+                            <button
+                              type="button"
+                              onClick={() => setFormCompanions(prev => prev.map(x => x.tempId === cat.tempId ? { ...x, items: x.items.filter(i => i.productId !== item.productId) } : x))}
+                              className="text-slate-400 hover:text-red-500"
+                            ><X size={12}/></button>
+                          </div>
+                        ))}
+                        {/* 제품 검색 */}
+                        {formCompanionActiveCatId === cat.tempId ? (
+                          <div className="mt-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="장비 검색..."
+                                value={formCompanionSearch}
+                                onChange={(e) => { setFormCompanionSearch(e.target.value); searchFormCompanionProducts(e.target.value); }}
+                                className="flex-1 p-2 border rounded text-sm"
+                                autoFocus
+                              />
+                              <button type="button" onClick={() => { setFormCompanionActiveCatId(null); setFormCompanionSearch(''); setFormCompanionSearchResults([]); }} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
+                            </div>
+                            {formCompanionSearchResults.length > 0 && (
+                              <div className="mt-1 border rounded bg-white shadow-sm max-h-40 overflow-y-auto">
+                                {formCompanionSearchResults.map(p => (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => {
+                                      if (!cat.items.find(i => i.productId === p.id)) {
+                                        setFormCompanions(prev => prev.map(x => x.tempId === cat.tempId ? { ...x, items: [...x.items, { productId: p.id, productName: p.name, price: p.price }] } : x));
+                                      }
+                                      setFormCompanionActiveCatId(null);
+                                      setFormCompanionSearch('');
+                                      setFormCompanionSearchResults([]);
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center justify-between"
+                                  >
+                                    <span>{p.name}</span>
+                                    <span className="text-slate-400 text-xs">{p.price.toLocaleString()}원</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setFormCompanionActiveCatId(cat.tempId)}
+                            className="mt-1 text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                          ><Plus size={12}/> 장비 추가</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <button onClick={handleAddProduct}
                   disabled={formLoading || !isProductFormValid}
                   className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold disabled:opacity-50 flex items-center justify-center gap-2">
