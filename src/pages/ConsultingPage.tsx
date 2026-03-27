@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Ship, Phone, Video, CheckCircle, AlertCircle, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@features/auth';
@@ -46,9 +46,19 @@ export function ConsultingPage() {
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('09:00');
 
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      setContactPhone(prev => prev || user.phone || '');
+      setContactEmail(prev => prev || user.email || '');
+    }
+  }, [user]);
 
   if (!isAuthenticated) {
     return (
@@ -132,7 +142,8 @@ export function ConsultingPage() {
       contentParts.push(`상담 방식: ${method?.label || contactMethod}`);
     }
     if (preferredDate) contentParts.push(`희망 일정: ${preferredDate} ${preferredTime}`);
-    if (user?.phone) contentParts.push(`연락처: ${user.phone}`);
+    if (contactPhone) contentParts.push(`연락처: ${contactPhone}`);
+    if (contactEmail) contentParts.push(`이메일: ${contactEmail}`);
 
     const content = contentParts.join('\n') || '컨설팅을 요청합니다.';
 
@@ -294,10 +305,32 @@ export function ConsultingPage() {
               </div>
             </div>
 
-            {/* 로그인 정보 표시 */}
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
-              <p><span className="font-semibold">{user?.name}</span>님 ({user?.email}) 계정으로 예약됩니다.</p>
-              {user?.phone && <p className="mt-1">연락처: {user.phone}</p>}
+            {/* 연락처 정보 */}
+            <div className="space-y-4">
+              <label className="block mb-2">연락처 정보</label>
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700 mb-3">
+                <span className="font-semibold">{user?.name}</span>님 ({user?.email}) 계정으로 예약됩니다.
+              </div>
+              <div>
+                <label className="block text-sm mb-2">휴대폰 번호</label>
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="010-0000-0000"
+                  className="w-full px-4 py-3 border border-border bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-2">이메일</label>
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="example@email.com"
+                  className="w-full px-4 py-3 border border-border bg-white"
+                />
+              </div>
             </div>
 
             {/* Submit Button */}

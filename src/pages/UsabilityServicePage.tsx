@@ -11,7 +11,7 @@ import { Button } from '@shared/components/ui/button';
 const PRODUCTS_PER_PAGE = 5;
 
 export function UsabilityServicePage() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const navigate = useNavigate();
 
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -82,6 +82,14 @@ export function UsabilityServicePage() {
       loadRequests();
     }
   }, [authLoading, isAuthenticated]);
+
+  useEffect(() => {
+    if (user) {
+      setContactName(prev => prev || user.name || '');
+      setContactPhone(prev => prev || user.phone || '');
+      setContactEmail(prev => prev || user.email || '');
+    }
+  }, [user]);
 
   const handleProductPageChange = (page: number) => {
     setProductPage(page);

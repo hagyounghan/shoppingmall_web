@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@features/auth';
 import { useCart } from '@features/cart';
@@ -10,7 +10,7 @@ import { Button } from '@shared/components/ui/button';
 import { Input } from '@shared/components/ui/input';
 import { Label } from '@shared/components/ui/label';
 import { Alert, AlertDescription } from '@shared/components/ui/alert';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Search } from 'lucide-react';
 import {
   PaymentMethod,
   PAYMENT_METHOD_LABELS,
@@ -18,6 +18,12 @@ import {
   CreateGuestOrderRequest,
   OrderResponse,
 } from '@shared/types';
+
+declare global {
+  interface Window {
+    daum: { Postcode: new (options: { oncomplete: (data: { address: string; zonecode: string }) => void }) => { open: () => void } };
+  }
+}
 
 const PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'BANK_TRANSFER'];
 
@@ -29,6 +35,12 @@ export function OrderPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD');
   const [note, setNote] = useState('');
 
+  // 공통 배송 정보
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
+  const [zipCode, setZipCode] = useState('');
+
   // 비로그인 폼
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
@@ -37,6 +49,30 @@ export function OrderPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // 회원 전화번호 자동완성
+  useEffect(() => {
+    if (user?.phone) setPhone(prev => prev || user.phone || '');
+  }, [user]);
+
+  // 카카오 주소 스크립트 로드
+  useEffect(() => {
+    if (document.getElementById('kakao-postcode-script')) return;
+    const script = document.createElement('script');
+    script.id = 'kakao-postcode-script';
+    script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    document.head.appendChild(script);
+  }, []);
+
+  const openAddressSearch = () => {
+    new window.daum.Postcode({
+      oncomplete: (data) => {
+        setZipCode(data.zonecode);
+        setAddress(data.address);
+        setAddressDetail('');
+      },
+    }).open();
+  };
 
   const totalPrice = getTotalPrice();
   const shippingFee = totalPrice >= 50000 ? 0 : 3000;
@@ -94,12 +130,17 @@ export function OrderPage() {
     }));
 
     try {
+      const sharedFields = {
+        paymentMethod,
+        note: note || undefined,
+        phone: phone || undefined,
+        zipCode: zipCode || undefined,
+        address: address || undefined,
+        addressDetail: addressDetail || undefined,
+      };
+
       if (isAuthenticated) {
-        const body: CreateOrderRequest = {
-          items: orderItems,
-          paymentMethod,
-          note: note || undefined,
-        };
+        const body: CreateOrderRequest = { items: orderItems, ...sharedFields };
         await apiPost<OrderResponse>(API_ENDPOINTS.ORDERS, body);
       } else {
         if (!guestName || !guestEmail) {
@@ -109,8 +150,7 @@ export function OrderPage() {
         }
         const body: CreateGuestOrderRequest = {
           items: orderItems,
-          paymentMethod,
-          note: note || undefined,
+          ...sharedFields,
           guestName,
           guestEmail,
           guestPhone: guestPhone || undefined,
@@ -140,12 +180,6 @@ export function OrderPage() {
               {!isAuthenticated && (
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-border space-y-4">
                   <h2 className="text-xl font-bold">주문자 정보</h2>
-
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
 
                   <div>
                     <Label htmlFor="guest-name">이름 <span className="text-destructive">*</span></Label>
@@ -194,11 +228,65 @@ export function OrderPage() {
                   <h2 className="text-xl font-bold">주문자 정보</h2>
                   <p className="text-muted-foreground text-sm">이름: <span className="text-foreground font-medium">{user.name}</span></p>
                   <p className="text-muted-foreground text-sm">이메일: <span className="text-foreground font-medium">{user.email}</span></p>
-                  {user.phone && (
-                    <p className="text-muted-foreground text-sm">전화번호: <span className="text-foreground font-medium">{user.phone}</span></p>
-                  )}
                 </div>
               )}
+
+              {/* 배송 정보 (공통) */}
+              <div className="bg-white p-6 rounded-lg shadow-sm border border-border space-y-4">
+                <h2 className="text-xl font-bold">배송 정보</h2>
+
+                <div>
+                  <Label htmlFor="phone">휴대폰 번호</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="010-0000-0000"
+                    className="mt-1"
+                    disabled={loading}
+                  />
+                </div>
+
+                <div>
+                  <Label>주소</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      type="text"
+                      value={zipCode}
+                      readOnly
+                      placeholder="우편번호"
+                      className="w-32"
+                      disabled={loading}
+                    />
+                    <button
+                      type="button"
+                      onClick={openAddressSearch}
+                      disabled={loading}
+                      className="flex items-center gap-1 px-3 py-2 border border-border rounded-md text-sm hover:bg-secondary transition-colors"
+                    >
+                      <Search className="h-4 w-4" />
+                      주소 검색
+                    </button>
+                  </div>
+                  <Input
+                    type="text"
+                    value={address}
+                    readOnly
+                    placeholder="기본 주소"
+                    className="mt-2"
+                    disabled={loading}
+                  />
+                  <Input
+                    type="text"
+                    value={addressDetail}
+                    onChange={(e) => setAddressDetail(e.target.value)}
+                    placeholder="상세 주소 (동/호수 등)"
+                    className="mt-2"
+                    disabled={loading}
+                  />
+                </div>
+              </div>
 
               {/* 주문 메모 */}
               <div className="bg-white p-6 rounded-lg shadow-sm border border-border">
@@ -265,7 +353,7 @@ export function OrderPage() {
               <div className="bg-white p-6 rounded-lg shadow-sm border border-border sticky top-4 space-y-4">
                 <h2 className="text-xl font-bold">결제 금액</h2>
 
-                {error && isAuthenticated && (
+                {error && (
                   <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>

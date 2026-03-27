@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Minus, Plus, ShoppingCart, Heart, MessageCircle, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ImageWithFallback } from '@shared/components/figma/ImageWithFallback';
@@ -37,6 +37,7 @@ export function ProductDetailPage() {
   const [selectedOption, setSelectedOption] = useState('');
   const [selectedRelatedProducts, setSelectedRelatedProducts] = useState<Record<string, string>>({});
   const [thumbOffset, setThumbOffset] = useState(0);
+  const [cartToast, setCartToast] = useState(false);
 
   const { addItem } = useCart();
   const { isInWishlist, addItem: addToWishlist, removeByProductId } = useWishlist();
@@ -116,6 +117,8 @@ export function ProductDetailPage() {
         }
       }
     }
+    setCartToast(true);
+    setTimeout(() => setCartToast(false), 2500);
   };
 
   const inWishlist = isInWishlist(product.id);
@@ -143,6 +146,11 @@ export function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {cartToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg text-sm font-medium animate-in fade-in slide-in-from-bottom-4 duration-300">
+          장바구니에 추가하였습니다 🛒
+        </div>
+      )}
       <div className="container mx-auto px-4 py-8">
         {/* Product Info Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">

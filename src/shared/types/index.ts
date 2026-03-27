@@ -217,6 +217,10 @@ export interface CreateOrderRequest {
   items: OrderItem[];
   paymentMethod: PaymentMethod;
   note?: string;
+  phone?: string;
+  zipCode?: string;
+  address?: string;
+  addressDetail?: string;
 }
 
 export interface CreateGuestOrderRequest extends CreateOrderRequest {
