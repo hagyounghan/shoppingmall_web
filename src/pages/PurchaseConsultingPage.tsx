@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ship, Phone, Video, Loader2, Edit2 } from 'lucide-react';
+import { Ship, Phone, Video, Loader2, Edit2, LogIn } from 'lucide-react';
 import { useAuth } from '@features/auth';
 import { apiPost, apiGet, apiPatch } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
@@ -78,15 +78,23 @@ export function PurchaseConsultingPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-12">
-          <div className="max-w-lg mx-auto text-center">
-            <h1 className="text-3xl mb-4 text-center">구매 컨설팅</h1>
-            <p className="text-center text-muted-foreground mb-8">
-              선박 / 용도 / 예산에 맞춘 최적의 장비 구성을 제안해드립니다.
-              <br />서비스 이용을 위해 로그인이 필요합니다.
-            </p>
-            <Button onClick={() => navigate(ROUTES.LOGIN, { state: { from: ROUTES.PURCHASE_CONSULTING } })}>로그인하기</Button>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-sm w-full">
+          <LogIn className="w-14 h-14 mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold mb-2">로그인이 필요합니다</h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            구매 컨설팅 서비스 이용을 위해 로그인이 필요합니다.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => navigate(ROUTES.LOGIN, { state: { from: ROUTES.PURCHASE_CONSULTING } })}>
+              로그인하기
+            </Button>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-5 py-2.5 border border-border hover:bg-secondary transition-colors rounded-lg text-sm"
+            >
+              돌아가기
+            </button>
           </div>
         </div>
       </div>

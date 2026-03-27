@@ -6,7 +6,7 @@ export function QuickButtons() {
   return (
     <div className="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-3">
       <Link
-        to={ROUTES.SERVICE_REQUEST}
+        to={ROUTES.USABILITY_SERVICE}
         className="group relative bg-primary text-primary-foreground p-4 rounded-full shadow-lg hover:bg-primary/90 transition-all hover:scale-110"
         title="사용성 서비스"
       >
@@ -17,7 +17,7 @@ export function QuickButtons() {
       </Link>
 
       <Link
-        to={ROUTES.CONSULTING_BOOKING}
+        to={ROUTES.PURCHASE_CONSULTING}
         className="group relative bg-accent text-accent-foreground p-4 rounded-full shadow-lg hover:bg-accent/90 transition-all hover:scale-110"
         title="구매 컨설팅"
       >
