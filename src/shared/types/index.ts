@@ -362,6 +362,7 @@ export interface SimulatorSetItemData {
   id: string;
   productId: string;
   productName: string | null;
+  productImage: string | null;
   categoryId: string;
   categoryName: string | null;
   categorySlug: string | null;

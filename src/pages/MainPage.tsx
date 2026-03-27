@@ -219,13 +219,30 @@ export function MainPage() {
                               >
                                 {item ? (
                                   <div className="relative">
-                                    <div className={`w-10 h-10 rounded-full border-4 border-white shadow-2xl ${meta.badge} flex items-center justify-center`} />
-                                    <div className="absolute top-12 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-800/90 text-white px-2 py-1 rounded text-[11px] shadow-md font-semibold">
+                                    <div className="w-20 h-20 rounded-lg border-4 border-primary bg-white p-1 shadow-2xl">
+                                      {item.productImage ? (
+                                        <img
+                                          src={item.productImage}
+                                          alt={item.productName ?? pos.name}
+                                          className="w-full h-full object-cover rounded"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full rounded bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 text-center px-1">
+                                          {item.productName ?? pos.name}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] px-2 py-1 rounded whitespace-nowrap shadow-md font-bold">
                                       {pos.name}
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="w-5 h-5 rounded-full border-2 bg-white/60 border-gray-300" />
+                                  <div className="relative group">
+                                    <div className="w-7 h-7 rounded-full border-4 bg-white border-primary/40 shadow-[0_0_10px_rgba(59,130,246,0.3)]" />
+                                    <div className="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-800/80 text-white px-2 py-1 rounded text-[10px] shadow-md">
+                                      {pos.name}
+                                    </div>
+                                  </div>
                                 )}
                               </div>
                             );
