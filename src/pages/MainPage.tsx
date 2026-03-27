@@ -202,7 +202,7 @@ export function MainPage() {
                         {/* 배 + 장비 배치도 */}
                         <div
                           className="relative w-full bg-white flex items-center justify-center"
-                          style={{ height: '420px' }}
+                          style={{ height: '600px' }}
                         >
                           <img
                             src={set.type === 'fishing_vessel' ? '/fishing.png' : '/leisure.png'}

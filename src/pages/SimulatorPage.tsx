@@ -501,7 +501,7 @@ export function SimulatorPage() {
               <div className="p-6 border-b border-border">
                 <h2 className="text-xl md:text-2xl font-bold">선박 장비 배치</h2>
               </div>
-              <div className="relative bg-white flex items-center justify-center w-full" style={{ minHeight: '400px', height: '60vh' }}>
+              <div className="relative bg-white flex items-center justify-center w-full" style={{ minHeight: '300px', height: '45vh' }}>
                 <img
                   src={boatType === 'fishing' ? '/fishing.png' : '/leisure.png'}
                   alt="선박 이미지"
