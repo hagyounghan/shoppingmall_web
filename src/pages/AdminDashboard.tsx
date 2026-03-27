@@ -4,7 +4,7 @@ import {
   Plus, Edit, Trash2, Ship, User,
   X, Image as ImageIcon, Layout, Sparkles, Save,
   ShoppingCart, ChevronDown, Star, ChevronUp, Search, Loader2,
-  Link2, HelpCircle, BookOpen, FileText, Layers, ListPlus
+  Link2, HelpCircle, BookOpen, FileText
 } from 'lucide-react';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
@@ -162,30 +162,26 @@ export default function AdminDashboard() {
 
   // 시리즈 관리
   const [seriesList, setSeriesList] = useState<ProductSeriesRecord[]>([]);
-  const [seriesLoading, setSeriesLoading] = useState(false);
-  const [seriesForm, setSeriesForm] = useState({ name: '', slug: '' });
-  const [seriesFormLoading, setSeriesFormLoading] = useState(false);
-  const [isAddingSeries, setIsAddingSeries] = useState(false);
-  // 시리즈 제품 지정 패널
-  const [seriesAssignProductId, setSeriesAssignProductId] = useState('');
-  const [seriesAssignSeriesId, setSeriesAssignSeriesId] = useState('');
-  const [seriesAssignLoading, setSeriesAssignLoading] = useState(false);
-  const [seriesAssignSearch, setSeriesAssignSearch] = useState('');
-  const [seriesAssignResults, setSeriesAssignResults] = useState<Product[]>([]);
 
   // 같이 구매 관리
-  const [companionProductId, setCompanionProductId] = useState<string | null>(null);
   const [companionGroups, setCompanionGroups] = useState<ProductCompanionGroup[]>([]);
   const [companionLoading, setCompanionLoading] = useState(false);
-  const [companionGroupForm, setCompanionGroupForm] = useState({ label: '', isRequired: false, order: '0' });
-  const [companionGroupFormLoading, setCompanionGroupFormLoading] = useState(false);
-  const [editingCompanionGroupId, setEditingCompanionGroupId] = useState<string | null>(null);
   const [companionItemSearch, setCompanionItemSearch] = useState('');
   const [companionItemResults, setCompanionItemResults] = useState<Product[]>([]);
   const [companionActiveGroupId, setCompanionActiveGroupId] = useState<string | null>(null);
-  const [companionSearch, setCompanionSearch] = useState('');
-  const [companionSearchResults, setCompanionSearchResults] = useState<Product[]>([]);
-  const [companionSearchLoading, setCompanionSearchLoading] = useState(false);
+
+  // 설정 패널 (상품 행 클릭)
+  const [configProductId, setConfigProductId] = useState<string | null>(null);
+  const [configTab, setConfigTab] = useState<'series' | 'companion'>('series');
+  const [configSeriesId, setConfigSeriesId] = useState('');
+  const [configSeriesLoading, setConfigSeriesLoading] = useState(false);
+  // 같이구매 - 그룹 추가
+  const [newGroupLabel, setNewGroupLabel] = useState('');
+  const [newGroupIsRequired, setNewGroupIsRequired] = useState(false);
+  const [newGroupSaving, setNewGroupSaving] = useState(false);
+  // 같이구매 - 시리즈 신규 생성
+  const [newSeriesName, setNewSeriesName] = useState('');
+  const [newSeriesSaving, setNewSeriesSaving] = useState(false);
 
   // 메인/추천 관리 목업 (배너만 유지)
   const banners = [{ id: 1, title: "30년 경력 명장의 선택", subtitle: "최신 해양 장비 특별전", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200", isActive: true }];
@@ -201,7 +197,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (currentMenu === 'dashboard') loadStats();
-    if (currentMenu === 'products') loadProducts();
+    if (currentMenu === 'products') { loadProducts(); loadSeries(); }
     if (currentMenu === 'consulting') loadConsultings();
     if (currentMenu === 'orders') loadOrders();
     if (currentMenu === 'featured') loadFeaturedProducts();
@@ -210,8 +206,6 @@ export default function AdminDashboard() {
     if (currentMenu === 'inquiry_mgmt') loadInquiries();
     if (currentMenu === 'faq_mgmt') loadFaqs();
     if (currentMenu === 'main_mgmt') { loadSimSets(); loadProducts(); }
-    if (currentMenu === 'series_mgmt') { loadSeries(); loadProducts(); }
-    if (currentMenu === 'companion_mgmt') loadProducts();
   }, [currentMenu]);
 
   // 통계 로드
@@ -243,54 +237,44 @@ export default function AdminDashboard() {
 
   // 시리즈 로드
   const loadSeries = async () => {
-    setSeriesLoading(true);
     try {
       const res = await apiGet<ProductSeriesRecord[]>(API_ENDPOINTS.PRODUCT_SERIES);
       setSeriesList(Array.isArray(res) ? res : []);
     } catch { setSeriesList([]); }
-    finally { setSeriesLoading(false); }
   };
 
-  const handleCreateSeries = async () => {
-    if (!seriesForm.name) return;
-    setSeriesFormLoading(true);
+  const openConfigPanel = (product: Product) => {
+    setConfigProductId(product.id);
+    setConfigTab('series');
+    setConfigSeriesId(product.seriesId ?? '');
+    setCompanionGroups([]);
+    setCompanionActiveGroupId(null);
+    setCompanionItemSearch('');
+    setCompanionItemResults([]);
+    loadCompanionGroups(product.id);
+  };
+
+  const handleSeriesSave = async () => {
+    if (!configProductId) return;
+    setConfigSeriesLoading(true);
     try {
-      await apiPost(API_ENDPOINTS.PRODUCT_SERIES, { name: seriesForm.name, slug: seriesForm.slug || undefined });
-      setSeriesForm({ name: '', slug: '' });
-      setIsAddingSeries(false);
+      await apiPatch(API_ENDPOINTS.PRODUCT_ASSIGN_SERIES(configProductId), { seriesId: configSeriesId || null });
+      setProducts(prev => prev.map(p => p.id === configProductId ? { ...p, seriesId: configSeriesId || null } : p));
+      alert('시리즈가 저장되었습니다.');
+    } catch (err) { alert(err instanceof Error ? err.message : '저장 실패'); }
+    finally { setConfigSeriesLoading(false); }
+  };
+
+  const handleCreateSeriesAndAssign = async () => {
+    if (!configProductId || !newSeriesName) return;
+    setNewSeriesSaving(true);
+    try {
+      const created = await apiPost<ProductSeriesRecord>(API_ENDPOINTS.PRODUCT_SERIES, { name: newSeriesName });
       await loadSeries();
+      setConfigSeriesId(created.id);
+      setNewSeriesName('');
     } catch (err) { alert(err instanceof Error ? err.message : '생성 실패'); }
-    finally { setSeriesFormLoading(false); }
-  };
-
-  const handleDeleteSeries = async (seriesId: string) => {
-    if (!confirm('시리즈를 삭제하면 소속 제품들의 시리즈 지정이 해제됩니다. 계속하시겠습니까?')) return;
-    try {
-      await apiDelete(API_ENDPOINTS.PRODUCT_SERIES_ITEM(seriesId));
-      await loadSeries();
-    } catch (err) { alert(err instanceof Error ? err.message : '삭제 실패'); }
-  };
-
-  const handleAssignSeries = async () => {
-    if (!seriesAssignProductId) return;
-    setSeriesAssignLoading(true);
-    try {
-      await apiPatch(API_ENDPOINTS.PRODUCT_ASSIGN_SERIES(seriesAssignProductId), { seriesId: seriesAssignSeriesId || null });
-      setSeriesAssignProductId('');
-      setSeriesAssignSeriesId('');
-      setSeriesAssignSearch('');
-      setSeriesAssignResults([]);
-      alert('시리즈 지정이 완료되었습니다.');
-    } catch (err) { alert(err instanceof Error ? err.message : '지정 실패'); }
-    finally { setSeriesAssignLoading(false); }
-  };
-
-  const searchSeriesAssignProducts = async (q: string) => {
-    if (!q) { setSeriesAssignResults([]); return; }
-    try {
-      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(q)}&take=10`);
-      setSeriesAssignResults(res.data);
-    } catch { setSeriesAssignResults([]); }
+    finally { setNewSeriesSaving(false); }
   };
 
   // 같이 구매 로드
@@ -304,41 +288,26 @@ export default function AdminDashboard() {
   };
 
   const handleAddCompanionGroup = async () => {
-    if (!companionProductId || !companionGroupForm.label) return;
-    setCompanionGroupFormLoading(true);
+    if (!configProductId || !newGroupLabel.trim()) return;
+    setNewGroupSaving(true);
     try {
-      await apiPost(API_ENDPOINTS.PRODUCT_COMPANION_GROUPS(companionProductId), {
-        label: companionGroupForm.label,
-        isRequired: companionGroupForm.isRequired,
-        order: parseInt(companionGroupForm.order) || 0,
+      await apiPost(API_ENDPOINTS.PRODUCT_COMPANION_GROUPS(configProductId), {
+        label: newGroupLabel.trim(),
+        isRequired: newGroupIsRequired,
+        order: companionGroups.length,
       });
-      setCompanionGroupForm({ label: '', isRequired: false, order: '0' });
-      await loadCompanionGroups(companionProductId);
+      setNewGroupLabel('');
+      setNewGroupIsRequired(false);
+      await loadCompanionGroups(configProductId);
     } catch (err) { alert(err instanceof Error ? err.message : '추가 실패'); }
-    finally { setCompanionGroupFormLoading(false); }
-  };
-
-  const handleUpdateCompanionGroup = async (groupId: string) => {
-    if (!companionProductId) return;
-    setCompanionGroupFormLoading(true);
-    try {
-      await apiPatch(API_ENDPOINTS.PRODUCT_COMPANION_GROUP(companionProductId, groupId), {
-        label: companionGroupForm.label,
-        isRequired: companionGroupForm.isRequired,
-        order: parseInt(companionGroupForm.order) || 0,
-      });
-      setEditingCompanionGroupId(null);
-      setCompanionGroupForm({ label: '', isRequired: false, order: '0' });
-      await loadCompanionGroups(companionProductId);
-    } catch (err) { alert(err instanceof Error ? err.message : '수정 실패'); }
-    finally { setCompanionGroupFormLoading(false); }
+    finally { setNewGroupSaving(false); }
   };
 
   const handleDeleteCompanionGroup = async (groupId: string) => {
-    if (!companionProductId || !confirm('그룹을 삭제하시겠습니까?')) return;
+    if (!configProductId || !confirm('그룹을 삭제하시겠습니까?')) return;
     try {
-      await apiDelete(API_ENDPOINTS.PRODUCT_COMPANION_GROUP(companionProductId, groupId));
-      await loadCompanionGroups(companionProductId);
+      await apiDelete(API_ENDPOINTS.PRODUCT_COMPANION_GROUP(configProductId, groupId));
+      await loadCompanionGroups(configProductId);
     } catch (err) { alert(err instanceof Error ? err.message : '삭제 실패'); }
   };
 
@@ -351,31 +320,22 @@ export default function AdminDashboard() {
   };
 
   const handleAddCompanionItem = async (groupId: string, cProductId: string) => {
-    if (!companionProductId) return;
+    if (!configProductId) return;
     try {
-      await apiPost(API_ENDPOINTS.PRODUCT_COMPANION_ITEMS(companionProductId, groupId), { companionProductId: cProductId });
+      await apiPost(API_ENDPOINTS.PRODUCT_COMPANION_ITEMS(configProductId, groupId), { companionProductId: cProductId });
       setCompanionItemSearch('');
       setCompanionItemResults([]);
-      await loadCompanionGroups(companionProductId);
+      setCompanionActiveGroupId(null);
+      await loadCompanionGroups(configProductId);
     } catch (err) { alert(err instanceof Error ? err.message : '추가 실패'); }
   };
 
   const handleDeleteCompanionItem = async (groupId: string, itemId: string) => {
-    if (!companionProductId) return;
+    if (!configProductId) return;
     try {
-      await apiDelete(API_ENDPOINTS.PRODUCT_COMPANION_ITEM(companionProductId, groupId, itemId));
-      await loadCompanionGroups(companionProductId);
+      await apiDelete(API_ENDPOINTS.PRODUCT_COMPANION_ITEM(configProductId, groupId, itemId));
+      await loadCompanionGroups(configProductId);
     } catch (err) { alert(err instanceof Error ? err.message : '삭제 실패'); }
-  };
-
-  const searchCompanionProducts = async (q: string) => {
-    if (!q) { setCompanionSearchResults([]); return; }
-    setCompanionSearchLoading(true);
-    try {
-      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(q)}&take=10`);
-      setCompanionSearchResults(res.data);
-    } catch { setCompanionSearchResults([]); }
-    finally { setCompanionSearchLoading(false); }
   };
 
   // 주문 목록 로드
@@ -964,8 +924,6 @@ export default function AdminDashboard() {
           <MenuButton icon={<ShoppingCart size={20}/>} label="주문 관리" isActive={currentMenu === 'orders'} onClick={() => setCurrentMenu('orders')} />
           <MenuButton icon={<Layout size={20}/>} label="메인/추천 관리" isActive={currentMenu === 'main_mgmt'} onClick={() => setCurrentMenu('main_mgmt')} />
           <MenuButton icon={<Star size={20}/>} label="소개 장비 관리" isActive={currentMenu === 'featured'} onClick={() => setCurrentMenu('featured')} />
-          <MenuButton icon={<Layers size={20}/>} label="시리즈 관리" isActive={currentMenu === 'series_mgmt'} onClick={() => setCurrentMenu('series_mgmt')} />
-          <MenuButton icon={<ListPlus size={20}/>} label="같이 구매 관리" isActive={currentMenu === 'companion_mgmt'} onClick={() => setCurrentMenu('companion_mgmt')} />
           <MenuButton icon={<MessageCircle size={20}/>} label="컨설팅 신청 내역" isActive={currentMenu === 'consulting'} onClick={() => setCurrentMenu('consulting')} />
           <div className="pt-2 pb-1 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">콘텐츠 관리</div>
           <MenuButton icon={<Megaphone size={20}/>} label="공지사항 관리" isActive={currentMenu === 'notice_mgmt'} onClick={() => setCurrentMenu('notice_mgmt')} />
@@ -1159,6 +1117,154 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {/* 시리즈 & 같이구매 설정 패널 */}
+            {configProductId && (
+              <div className="bg-white p-6 rounded-2xl border-2 border-green-100 shadow-md space-y-4">
+                {/* 헤더 */}
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      <Sparkles size={18} className="text-green-500"/> 시리즈 & 같이 구매 설정
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">{products.find(p => p.id === configProductId)?.name}</p>
+                  </div>
+                  <button onClick={() => setConfigProductId(null)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+                </div>
+
+                {/* 탭 */}
+                <div className="flex border-b border-slate-100">
+                  {(['series', 'companion'] as const).map(tab => (
+                    <button key={tab} onClick={() => setConfigTab(tab)}
+                      className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${configTab === tab ? 'border-green-500 text-green-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+                      {tab === 'series' ? '시리즈 지정' : '같이 구매'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 시리즈 탭 */}
+                {configTab === 'series' && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">시리즈 선택</label>
+                      <div className="flex gap-2">
+                        <select value={configSeriesId} onChange={e => setConfigSeriesId(e.target.value)}
+                          className="flex-1 p-2 border rounded-lg text-sm">
+                          <option value="">시리즈 없음</option>
+                          {seriesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                        <button onClick={handleSeriesSave} disabled={configSeriesLoading}
+                          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-1">
+                          <Save size={14}/> {configSeriesLoading ? '저장 중...' : '저장'}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="border-t border-slate-100 pt-3">
+                      <label className="text-xs font-bold text-slate-500 mb-1 block">새 시리즈 생성 후 지정</label>
+                      <div className="flex gap-2">
+                        <input type="text" placeholder="새 시리즈명 입력" value={newSeriesName}
+                          onChange={e => setNewSeriesName(e.target.value)}
+                          className="flex-1 p-2 border rounded-lg text-sm"/>
+                        <button onClick={handleCreateSeriesAndAssign} disabled={newSeriesSaving || !newSeriesName.trim()}
+                          className="bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-1">
+                          <Plus size={14}/> {newSeriesSaving ? '생성 중...' : '생성'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 같이 구매 탭 */}
+                {configTab === 'companion' && (
+                  <div className="space-y-4">
+                    {/* 카테고리 추가 */}
+                    <div className="bg-slate-50 p-4 rounded-xl space-y-3">
+                      <p className="text-xs font-bold text-slate-500">카테고리 추가</p>
+                      {/* 사전 정의 버튼 */}
+                      <div className="flex flex-wrap gap-2">
+                        {['이미지송수파기', '어탐송수파기', '헤딩센서', '레이더', 'VHF 무선기', 'GPS 안테나', '자동조타', '액티브타켓', '트롤링모터'].map(label => (
+                          <button key={label} onClick={() => setNewGroupLabel(label)}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${newGroupLabel === label ? 'bg-green-600 text-white border-green-600' : 'bg-white border-slate-200 text-slate-600 hover:border-green-400'}`}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      {/* 직접 입력 + 필수 여부 + 추가 버튼 */}
+                      <div className="flex gap-2 items-center">
+                        <input type="text" placeholder="직접 입력..." value={newGroupLabel}
+                          onChange={e => setNewGroupLabel(e.target.value)}
+                          className="flex-1 p-2 border rounded-lg text-sm bg-white"/>
+                        <label className="flex items-center gap-1 text-xs font-semibold text-slate-600 whitespace-nowrap">
+                          <input type="checkbox" checked={newGroupIsRequired} onChange={e => setNewGroupIsRequired(e.target.checked)} className="accent-green-600"/>
+                          필수
+                        </label>
+                        <button onClick={handleAddCompanionGroup} disabled={newGroupSaving || !newGroupLabel.trim()}
+                          className="bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-bold disabled:opacity-50 flex items-center gap-1 whitespace-nowrap">
+                          <Plus size={14}/> {newGroupSaving ? '추가 중...' : '카테고리 추가'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 카테고리 목록 */}
+                    {companionLoading ? (
+                      <div className="text-slate-400 text-sm flex items-center gap-2"><Loader2 size={14} className="animate-spin"/> 불러오는 중...</div>
+                    ) : companionGroups.length === 0 ? (
+                      <p className="text-sm text-slate-400 text-center py-4">등록된 카테고리가 없습니다.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {companionGroups.map(group => (
+                          <div key={group.id} className="border border-slate-100 rounded-xl p-4 space-y-3">
+                            {/* 그룹 헤더 */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold">{group.label}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${group.isRequired ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+                                  {group.isRequired ? '필수' : '선택'}
+                                </span>
+                              </div>
+                              <button onClick={() => handleDeleteCompanionGroup(group.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={14}/></button>
+                            </div>
+                            {/* 아이템 목록 */}
+                            <div className="space-y-1">
+                              {(group.items ?? []).map(item => (
+                                <div key={item.id} className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg text-sm">
+                                  <div className="flex items-center gap-2">
+                                    {item.product.image && <img src={item.product.image} alt={item.product.name} className="w-7 h-7 object-cover rounded border"/>}
+                                    <span className="font-medium">{item.product.name}</span>
+                                    <span className="text-xs text-blue-500">{formatPrice(item.product.price)}</span>
+                                  </div>
+                                  <button onClick={() => handleDeleteCompanionItem(group.id, item.id)} className="text-red-400 hover:text-red-600"><X size={14}/></button>
+                                </div>
+                              ))}
+                            </div>
+                            {/* 제품 추가 검색 */}
+                            <div>
+                              <input type="text" placeholder="제품 검색해서 추가..."
+                                value={companionActiveGroupId === group.id ? companionItemSearch : ''}
+                                onChange={e => { setCompanionActiveGroupId(group.id); setCompanionItemSearch(e.target.value); searchCompanionItems(e.target.value); }}
+                                className="w-full p-2 border rounded-lg text-sm"/>
+                              {companionActiveGroupId === group.id && companionItemResults.length > 0 && (
+                                <div className="border rounded-lg mt-1 max-h-36 overflow-y-auto">
+                                  {companionItemResults.map(p => (
+                                    <button key={p.id}
+                                      onClick={() => handleAddCompanionItem(group.id, p.id)}
+                                      className="w-full text-left px-3 py-2 hover:bg-green-50 text-sm flex items-center gap-2 border-b last:border-0">
+                                      {p.image && <img src={p.image} alt={p.name} className="w-6 h-6 object-cover rounded"/>}
+                                      <span>{p.name}</span>
+                                      <span className="text-blue-500 text-xs ml-auto">{formatPrice(p.price)}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 상품 목록 테이블 */}
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
               {productsLoading ? (
@@ -1201,7 +1307,7 @@ export default function AdminDashboard() {
                           </td>
                         </tr>
                       ) : (
-                        <tr key={p.id} className={`border-b hover:bg-slate-50 transition text-sm ${recProductId === p.id ? 'bg-indigo-50' : ''}`}>
+                        <tr key={p.id} className={`border-b hover:bg-slate-50 transition text-sm ${recProductId === p.id ? 'bg-indigo-50' : ''} ${configProductId === p.id ? 'bg-green-50' : ''}`}>
                           <td className="p-4 font-bold">{p.name}</td>
                           <td className="p-4 font-black text-blue-600">{p.price.toLocaleString()}원</td>
                           <td className="p-4">{p.stock}개</td>
@@ -1211,6 +1317,12 @@ export default function AdminDashboard() {
                                 title="연결 장비 관리"
                                 className={`text-slate-400 hover:text-indigo-600 ${recProductId === p.id ? 'text-indigo-600' : ''}`}>
                                 <Link2 size={16}/>
+                              </button>
+                              <button
+                                onClick={() => configProductId === p.id ? setConfigProductId(null) : openConfigPanel(p)}
+                                title="시리즈/같이구매 설정"
+                                className={`text-slate-400 hover:text-green-600 ${configProductId === p.id ? 'text-green-600' : ''}`}>
+                                <Sparkles size={16}/>
                               </button>
                               <button onClick={() => startEditing(p)} className="text-slate-400 hover:text-blue-600"><Edit size={16}/></button>
                               <button onClick={() => handleDeleteProduct(p.id, p.name)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
@@ -2079,253 +2191,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* [시리즈 관리] */}
-        {currentMenu === 'series_mgmt' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-black">시리즈 관리</h2>
-              <button
-                onClick={() => setIsAddingSeries(!isAddingSeries)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700"
-              >
-                {isAddingSeries ? <X size={18} className="mr-1"/> : <Plus size={18} className="mr-1"/>}
-                {isAddingSeries ? '취소' : '시리즈 추가'}
-              </button>
-            </div>
-
-            {isAddingSeries && (
-              <div className="bg-white p-5 rounded-2xl border-2 border-blue-50 shadow-md space-y-3">
-                <h3 className="font-bold text-lg">새 시리즈 추가</h3>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">시리즈명 <span className="text-red-500">*</span></label>
-                  <input type="text" placeholder="예: HDS PRO 시리즈" value={seriesForm.name}
-                    onChange={(e) => setSeriesForm(f => ({ ...f, name: e.target.value }))}
-                    className="p-2 border rounded w-full" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">슬러그 (선택)</label>
-                  <input type="text" placeholder="예: hds-pro" value={seriesForm.slug}
-                    onChange={(e) => setSeriesForm(f => ({ ...f, slug: e.target.value }))}
-                    className="p-2 border rounded w-full" />
-                </div>
-                <button onClick={handleCreateSeries} disabled={seriesFormLoading || !seriesForm.name}
-                  className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold disabled:opacity-50 flex items-center justify-center gap-2">
-                  <Save size={16} /> {seriesFormLoading ? '저장 중...' : '시리즈 저장'}
-                </button>
-              </div>
-            )}
-
-            {/* 시리즈 목록 */}
-            {seriesLoading ? (
-              <div className="flex items-center gap-2 text-slate-400"><Loader2 className="animate-spin" size={18}/> 불러오는 중...</div>
-            ) : seriesList.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">등록된 시리즈가 없습니다.</div>
-            ) : (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
-                <table className="w-full text-sm">
-                  <thead className="border-b border-slate-100"><tr className="text-left text-xs text-slate-400 font-bold uppercase">
-                    <th className="p-4">시리즈명</th><th className="p-4">슬러그</th><th className="p-4 text-right">관리</th>
-                  </tr></thead>
-                  <tbody>
-                    {seriesList.map(s => (
-                      <tr key={s.id} className="border-b border-slate-50 last:border-0">
-                        <td className="p-4 font-semibold">{s.name}</td>
-                        <td className="p-4 text-slate-400">{s.slug || '-'}</td>
-                        <td className="p-4 text-right">
-                          <button onClick={() => handleDeleteSeries(s.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={16}/></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* 제품에 시리즈 지정 */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-              <h3 className="font-bold text-lg mb-4">제품에 시리즈 지정</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">제품 검색</label>
-                  <input type="text" placeholder="제품명으로 검색" value={seriesAssignSearch}
-                    onChange={(e) => { setSeriesAssignSearch(e.target.value); searchSeriesAssignProducts(e.target.value); }}
-                    className="p-2 border rounded w-full" />
-                  {seriesAssignResults.length > 0 && (
-                    <div className="border rounded mt-1 max-h-48 overflow-y-auto">
-                      {seriesAssignResults.map(p => (
-                        <button key={p.id} onClick={() => { setSeriesAssignProductId(p.id); setSeriesAssignSearch(p.name); setSeriesAssignResults([]); }}
-                          className={`w-full text-left px-3 py-2 hover:bg-blue-50 text-sm ${seriesAssignProductId === p.id ? 'bg-blue-50 font-bold' : ''}`}>
-                          {p.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">시리즈 선택</label>
-                  <select value={seriesAssignSeriesId}
-                    onChange={(e) => setSeriesAssignSeriesId(e.target.value)}
-                    className="p-2 border rounded w-full">
-                    <option value="">시리즈 해제 (없음)</option>
-                    {seriesList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-                <button onClick={handleAssignSeries} disabled={seriesAssignLoading || !seriesAssignProductId}
-                  className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold disabled:opacity-50 flex items-center justify-center gap-2">
-                  <Save size={16}/> {seriesAssignLoading ? '처리 중...' : '시리즈 지정 저장'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* [같이 구매 관리] */}
-        {currentMenu === 'companion_mgmt' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-black">같이 구매 관리</h2>
-
-            {/* 제품 선택 */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-              <h3 className="font-bold mb-3">관리할 제품 선택</h3>
-              <div className="flex gap-2">
-                <input type="text" placeholder="제품명으로 검색" value={companionSearch}
-                  onChange={(e) => { setCompanionSearch(e.target.value); searchCompanionProducts(e.target.value); }}
-                  className="flex-1 p-2 border rounded" />
-                {companionSearchLoading && <Loader2 className="animate-spin self-center" size={18}/>}
-              </div>
-              {companionSearchResults.length > 0 && (
-                <div className="border rounded mt-2 max-h-48 overflow-y-auto">
-                  {companionSearchResults.map(p => (
-                    <button key={p.id} onClick={() => { setCompanionProductId(p.id); setCompanionSearch(p.name); setCompanionSearchResults([]); loadCompanionGroups(p.id); }}
-                      className={`w-full text-left px-3 py-2 hover:bg-blue-50 text-sm ${companionProductId === p.id ? 'bg-blue-50 font-bold' : ''}`}>
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {companionProductId && (
-                <p className="mt-2 text-sm text-blue-600 font-semibold">
-                  선택됨: {products.find(p => p.id === companionProductId)?.name}
-                </p>
-              )}
-            </div>
-
-            {companionProductId && (
-              <>
-                {/* 그룹 추가 폼 */}
-                <div className="bg-white p-5 rounded-2xl border-2 border-blue-50 shadow-md">
-                  <h3 className="font-bold mb-3">
-                    {editingCompanionGroupId ? '그룹 수정' : '새 그룹 추가'}
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <label className="text-xs font-bold text-slate-500 mb-1 block">그룹 레이블 <span className="text-red-500">*</span></label>
-                      <input type="text" placeholder="예: 이미지송수파기, 헤딩센서" value={companionGroupForm.label}
-                        onChange={(e) => setCompanionGroupForm(f => ({ ...f, label: e.target.value }))}
-                        className="p-2 border rounded w-full" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-500 mb-1 block">표시 순서</label>
-                      <input type="number" value={companionGroupForm.order}
-                        onChange={(e) => setCompanionGroupForm(f => ({ ...f, order: e.target.value }))}
-                        className="p-2 border rounded w-full" />
-                    </div>
-                    <div className="flex items-center gap-2 self-end pb-1">
-                      <input type="checkbox" id="isRequired" checked={companionGroupForm.isRequired}
-                        onChange={(e) => setCompanionGroupForm(f => ({ ...f, isRequired: e.target.checked }))} />
-                      <label htmlFor="isRequired" className="text-sm font-semibold">필수 선택</label>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => editingCompanionGroupId ? handleUpdateCompanionGroup(editingCompanionGroupId) : handleAddCompanionGroup()}
-                      disabled={companionGroupFormLoading || !companionGroupForm.label}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold disabled:opacity-50 flex items-center justify-center gap-2">
-                      <Save size={16}/> {companionGroupFormLoading ? '저장 중...' : (editingCompanionGroupId ? '그룹 수정' : '그룹 추가')}
-                    </button>
-                    {editingCompanionGroupId && (
-                      <button onClick={() => { setEditingCompanionGroupId(null); setCompanionGroupForm({ label: '', isRequired: false, order: '0' }); }}
-                        className="px-4 py-2 border rounded-lg text-slate-500 hover:bg-slate-50">
-                        취소
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* 그룹 목록 */}
-                {companionLoading ? (
-                  <div className="flex items-center gap-2 text-slate-400"><Loader2 className="animate-spin" size={18}/> 불러오는 중...</div>
-                ) : companionGroups.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">등록된 그룹이 없습니다.</div>
-                ) : (
-                  <div className="space-y-4">
-                    {companionGroups.map(group => (
-                      <div key={group.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                        <div className="flex justify-between items-center mb-3">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-lg">{group.label}</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${group.isRequired ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                              {group.isRequired ? '필수' : '선택'}
-                            </span>
-                            <span className="text-xs text-slate-400">순서: {group.order}</span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => { setEditingCompanionGroupId(group.id); setCompanionGroupForm({ label: group.label, isRequired: group.isRequired, order: String(group.order) }); }}
-                              className="text-blue-400 hover:text-blue-600 p-1"><Edit size={16}/></button>
-                            <button onClick={() => handleDeleteCompanionGroup(group.id)}
-                              className="text-red-400 hover:text-red-600 p-1"><Trash2 size={16}/></button>
-                          </div>
-                        </div>
-
-                        {/* 아이템 목록 */}
-                        <div className="space-y-2 mb-3">
-                          {(group.items ?? []).map(item => (
-                            <div key={item.id} className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                {item.product.image && (
-                                  <img src={item.product.image} alt={item.product.name} className="w-8 h-8 object-cover rounded border border-slate-200" />
-                                )}
-                                <span className="text-sm font-medium">{item.product.name}</span>
-                                <span className="text-xs text-primary">{formatPrice(item.product.price)}</span>
-                              </div>
-                              <button onClick={() => handleDeleteCompanionItem(group.id, item.id)}
-                                className="text-red-400 hover:text-red-600 p-1"><X size={14}/></button>
-                            </div>
-                          ))}
-                          {(group.items ?? []).length === 0 && (
-                            <p className="text-xs text-slate-400 py-2">아직 아이템이 없습니다. 아래에서 제품을 추가하세요.</p>
-                          )}
-                        </div>
-
-                        {/* 아이템 검색 추가 */}
-                        <div className="border-t border-slate-100 pt-3">
-                          <label className="text-xs font-bold text-slate-500 mb-1 block">제품 추가</label>
-                          <input type="text" placeholder="추가할 제품명 검색"
-                            value={companionActiveGroupId === group.id ? companionItemSearch : ''}
-                            onChange={(e) => { setCompanionActiveGroupId(group.id); setCompanionItemSearch(e.target.value); searchCompanionItems(e.target.value); }}
-                            className="p-2 border rounded w-full text-sm" />
-                          {companionActiveGroupId === group.id && companionItemResults.length > 0 && (
-                            <div className="border rounded mt-1 max-h-40 overflow-y-auto">
-                              {companionItemResults.map(p => (
-                                <button key={p.id}
-                                  onClick={() => { handleAddCompanionItem(group.id, p.id); setCompanionActiveGroupId(null); setCompanionItemSearch(''); setCompanionItemResults([]); }}
-                                  className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm flex items-center gap-2">
-                                  {p.image && <img src={p.image} alt={p.name} className="w-6 h-6 object-cover rounded" />}
-                                  <span>{p.name}</span>
-                                  <span className="text-primary text-xs ml-auto">{formatPrice(p.price)}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
 
       </main>
     </div>
