@@ -61,7 +61,8 @@ export interface ProductSeriesInfo {
 
 export interface ProductCompanionItem {
   id: string;
-  product: Product;
+  companionProduct: Product;
+  product?: Product; // legacy alias
   order: number;
 }
 
@@ -86,6 +87,7 @@ export interface Product {
   id: string;
   name: string;
   description: string;
+  htmlDescription?: string | null;
   price: number;
   image: string;
   tag: 'BEST' | 'NEW' | 'SALE' | null;

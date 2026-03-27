@@ -125,11 +125,13 @@ export function ProductDetailPage() {
       return;
     }
     const group = (product.companionGroups ?? []).find((g) => g.id === groupId);
-    const cItem = group?.items.find((i) => i.product.id === productId);
+    const cItem = group?.items.find((i) => (i.companionProduct ?? i.product)?.id === productId);
     if (!cItem) return;
+    const cp = cItem.companionProduct ?? cItem.product;
+    if (!cp) return;
     setOrderItems((prev) => [
       ...prev.filter((i) => i.key !== itemKey),
-      { key: itemKey, name: cItem.product.name, price: cItem.product.price, quantity: 1, productId: cItem.product.id },
+      { key: itemKey, name: cp.name, price: cp.price, quantity: 1, productId: cp.id },
     ]);
   }, [product]);
 
@@ -395,11 +397,15 @@ export function ProductDetailPage() {
                         className="flex-1 px-3 py-2 border border-border bg-white text-sm"
                       >
                         <option value="">{group.isRequired ? '- [필수] 옵션을 선택해 주세요 -' : '- [선택] 옵션을 선택해 주세요 -'}</option>
-                        {group.items.map((item) => (
-                          <option key={item.id} value={item.product.id}>
-                            {item.product.name}{item.product.price > 0 ? ` — ${formatPrice(item.product.price)}` : ''}
-                          </option>
-                        ))}
+                        {group.items.map((item) => {
+                          const cp = item.companionProduct ?? item.product;
+                          if (!cp) return null;
+                          return (
+                            <option key={item.id} value={cp.id}>
+                              {cp.name}{cp.price > 0 ? ` — ${formatPrice(cp.price)}` : ''}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   ))
