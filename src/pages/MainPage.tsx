@@ -1,17 +1,68 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
 import { ProductCard } from "@shared/components/ProductCard";
 import { CATEGORIES } from "@shared/constants/categories";
 import { ROUTES } from "@shared/constants/routes";
-import { Crown, TrendingUp, Wallet, ArrowRight } from "lucide-react";
-import { formatPrice } from "@shared/utils/format";
+import { Crown, TrendingUp, Wallet, ArrowRight, ChevronLeft, ChevronRight, Ship, Anchor } from "lucide-react";
 import { useTopProducts } from "@features/products";
+import { apiGet } from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/config/api";
+import { SimulatorSet, SimulatorType } from "@shared/types";
+
+const PRESET_LABEL: Record<string, { name: string; icon: typeof Crown; color: string; border: string; badge: string; text: string }> = {
+  premium: { name: '프리미엄 세트', icon: Crown,      color: 'from-amber-50 to-amber-100', border: 'border-amber-300', badge: 'bg-amber-500', text: 'text-amber-900' },
+  value:   { name: '가성비 세트',   icon: TrendingUp, color: 'from-blue-50 to-blue-100',   border: 'border-blue-300',  badge: 'bg-blue-500',  text: 'text-blue-900'  },
+  budget:  { name: '가심비 세트',   icon: Wallet,     color: 'from-green-50 to-green-100', border: 'border-green-300', badge: 'bg-green-500', text: 'text-green-900' },
+};
+
+const TYPE_LABEL: Record<SimulatorType, { name: string; icon: typeof Ship }> = {
+  fishing_vessel: { name: '어선용', icon: Anchor },
+  leisure:        { name: '레저용', icon: Ship   },
+};
+
+const SLIDE_INTERVAL = 4000;
 
 export function MainPage() {
   const navigate = useNavigate();
   const { data: bestProducts = [] } = useTopProducts(5);
+  const [allSets, setAllSets] = useState<SimulatorSet[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleSetClick = (setId: 'premium' | 'value' | 'budget') => {
-    navigate(`${ROUTES.SIMULATOR}?set=${setId}`);
+  useEffect(() => {
+    Promise.all([
+      apiGet<SimulatorSet[]>(API_ENDPOINTS.SIMULATOR_PRESETS('fishing_vessel')),
+      apiGet<SimulatorSet[]>(API_ENDPOINTS.SIMULATOR_PRESETS('leisure')),
+    ]).then(([fishing, leisure]) => {
+      const f = Array.isArray(fishing) ? fishing : [];
+      const l = Array.isArray(leisure) ? leisure : [];
+      setAllSets([...f, ...l]);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (allSets.length <= 1 || paused) return;
+    timerRef.current = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % allSets.length);
+    }, SLIDE_INTERVAL);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [allSets.length, paused]);
+
+  const goTo = (index: number) => {
+    setCurrentIndex((index + allSets.length) % allSets.length);
+    // 수동 이동 시 타이머 리셋
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (!paused && allSets.length > 1) {
+      timerRef.current = setInterval(() => {
+        setCurrentIndex(prev => (prev + 1) % allSets.length);
+      }, SLIDE_INTERVAL);
+    }
+  };
+
+  const handleSetClick = (set: SimulatorSet) => {
+    const type = set.type === 'fishing_vessel' ? 'fishing' : 'leisure';
+    navigate(`${ROUTES.SIMULATOR}?type=${type}&set=${set.presetKey ?? 'premium'}`);
   };
 
   return (
@@ -78,7 +129,7 @@ export function MainPage() {
         </section>
       )}
 
-      {/* Equipment Sets */}
+      {/* Equipment Sets Carousel */}
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
@@ -91,326 +142,114 @@ export function MainPage() {
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* 명장세트 */}
-            <div
-              onClick={() => handleSetClick('premium')}
-              className="group relative bg-white border-2 border-amber-300 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 transition-all cursor-pointer"
-            >
-              {/* 배 이미지 영역 */}
-              <div className="relative bg-gradient-to-b from-blue-100 to-blue-200 h-48 overflow-hidden">
-                <svg
-                  viewBox="0 0 800 450"
-                  className="w-full h-full"
-                  style={{ background: 'linear-gradient(to bottom, #e0f2fe, #bae6fd)' }}
-                >
-                  {/* 바다 파도 */}
-                  <path
-                    d="M 0 400 Q 100 390 200 395 Q 300 400 400 395 Q 500 390 600 395 Q 700 400 800 395 L 800 450 L 0 450 Z"
-                    fill="#3b82f6"
-                    opacity="0.4"
-                  />
-                  {/* 배 본체 */}
-                  <path
-                    d="M 120 280 Q 180 240 250 240 L 550 240 Q 620 240 680 280 L 680 360 Q 620 400 550 400 L 250 400 Q 180 400 120 360 Z"
-                    fill="#ffffff"
-                    stroke="#1e40af"
-                    strokeWidth="4"
-                  />
-                  {/* 플라이브리지 */}
-                  <rect x="280" y="180" width="240" height="80" fill="#f0f9ff" stroke="#1e40af" strokeWidth="2" rx="8" />
-                  {/* 마스트 */}
-                  <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
-                  <circle cx="400" cy="60" r="18" fill="#1e40af" />
-                  <circle cx="400" cy="50" r="12" fill="#cbd5e1" stroke="#1e40af" strokeWidth="2" />
-                </svg>
-                {/* 제품 이미지 오버레이 */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {/* GPS 플로터 (플라이브리지) */}
-                  <div className="absolute" style={{ left: '45%', top: '49%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400"
-                      alt="GPS 플로터"
-                      className="w-12 h-12 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                  {/* 레이더 (마스트 상단) */}
-                  <div className="absolute" style={{ left: '50%', top: '11%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1758248421325-6f3a1d92075a?w=400"
-                      alt="레이더"
-                      className="w-10 h-10 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                  {/* VHF 무선기 (선수부) */}
-                  <div className="absolute" style={{ left: '20%', top: '53%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400"
-                      alt="VHF 무선기"
-                      className="w-10 h-10 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                  {/* 어군탐지기 (선미부) */}
-                  <div className="absolute" style={{ left: '75%', top: '71%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400"
-                      alt="어군탐지기"
-                      className="w-10 h-10 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                  {/* 자동조타 (선미부 중앙) */}
-                  <div className="absolute" style={{ left: '60%', top: '76%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1719448081072-8090553a77fe?w=400"
-                      alt="자동조타"
-                      className="w-10 h-10 rounded-lg border-2 border-amber-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                </div>
-                <div className="absolute top-2 left-2 flex items-center gap-2 bg-amber-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                  <Crown className="w-4 h-4" />
-                  명장세트
-                </div>
-              </div>
 
-              {/* 정보 영역 */}
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-amber-900 mb-2">프리미엄 구성</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  명장님이 선택한 실용적인 픽으로 구성된 최고급 세트
-                </p>
-
-                {/* 적용된 장비 목록 */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
-                    <span className="text-muted-foreground">GPS 플로터 (12")</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
-                    <span className="text-muted-foreground">레이더 4kW</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
-                    <span className="text-muted-foreground">VHF 무선기</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
-                    <span className="text-muted-foreground">어군탐지기</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full" />
-                    <span className="text-muted-foreground">자동조타</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
-                    <p className="text-lg font-bold text-amber-900">
-                      {formatPrice(2300000 + 3800000 + 450000 + 2890000 + 2800000)}
-                    </p>
-                  </div>
-                  <button className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors flex items-center gap-2 font-semibold text-sm">
-                    더보기
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+          {allSets.length === 0 ? (
+            <div className="flex items-center justify-center h-48 text-muted-foreground">
+              등록된 추천 세트가 없습니다.
             </div>
-
-            {/* 가성비세트 */}
+          ) : (
             <div
-              onClick={() => handleSetClick('value')}
-              className="group relative bg-white border-2 border-blue-300 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 transition-all cursor-pointer"
+              className="relative"
+              onMouseEnter={() => setPaused(true)}
+              onMouseLeave={() => setPaused(false)}
             >
-              {/* 배 이미지 영역 */}
-              <div className="relative bg-gradient-to-b from-blue-100 to-blue-200 h-48 overflow-hidden">
-                <svg
-                  viewBox="0 0 800 450"
-                  className="w-full h-full"
-                  style={{ background: 'linear-gradient(to bottom, #e0f2fe, #bae6fd)' }}
-                >
-                  {/* 바다 파도 */}
-                  <path
-                    d="M 0 400 Q 100 390 200 395 Q 300 400 400 395 Q 500 390 600 395 Q 700 400 800 395 L 800 450 L 0 450 Z"
-                    fill="#3b82f6"
-                    opacity="0.4"
-                  />
-                  {/* 배 본체 */}
-                  <path
-                    d="M 120 280 Q 180 240 250 240 L 550 240 Q 620 240 680 280 L 680 360 Q 620 400 550 400 L 250 400 Q 180 400 120 360 Z"
-                    fill="#ffffff"
-                    stroke="#1e40af"
-                    strokeWidth="4"
-                  />
-                  {/* 플라이브리지 */}
-                  <rect x="280" y="180" width="240" height="80" fill="#f0f9ff" stroke="#1e40af" strokeWidth="2" rx="8" />
-                  {/* 마스트 */}
-                  <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
-                  <circle cx="400" cy="60" r="18" fill="#1e40af" />
-                </svg>
-                {/* 제품 이미지 오버레이 */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {/* GPS 플로터 (플라이브리지) */}
-                  <div className="absolute" style={{ left: '45%', top: '49%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400"
-                      alt="GPS 플로터"
-                      className="w-12 h-12 rounded-lg border-2 border-blue-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                  {/* VHF 무선기 (선수부) */}
-                  <div className="absolute" style={{ left: '20%', top: '53%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400"
-                      alt="VHF 무선기"
-                      className="w-10 h-10 rounded-lg border-2 border-blue-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                  {/* 어군탐지기 (선미부) */}
-                  <div className="absolute" style={{ left: '75%', top: '71%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1742232106501-6aa0b1fdaab3?w=400"
-                      alt="어군탐지기"
-                      className="w-10 h-10 rounded-lg border-2 border-blue-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                </div>
-                <div className="absolute top-2 left-2 flex items-center gap-2 bg-blue-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                  <TrendingUp className="w-4 h-4" />
-                  가성비세트
-                </div>
+              {/* 카드 */}
+              <div className="overflow-hidden">
+                {allSets.map((set, index) => {
+                  const meta = set.presetKey ? PRESET_LABEL[set.presetKey] : PRESET_LABEL.premium;
+                  const typeMeta = TYPE_LABEL[set.type];
+                  const Icon = meta.icon;
+                  const TypeIcon = typeMeta.icon;
+                  const totalPrice = set.items.reduce((sum, item) => sum, 0);
+                  const isVisible = index === currentIndex;
+
+                  return (
+                    <div
+                      key={set.id}
+                      className={`transition-all duration-500 ${isVisible ? 'block' : 'hidden'}`}
+                    >
+                      <div
+                        onClick={() => handleSetClick(set)}
+                        className={`group relative bg-gradient-to-br ${meta.color} border-2 ${meta.border} rounded-xl overflow-hidden hover:shadow-xl cursor-pointer transition-shadow`}
+                      >
+                        <div className="p-8 md:flex md:gap-10 items-start">
+                          {/* 왼쪽: 배지 + 제목 + 설명 */}
+                          <div className="md:w-1/3 mb-6 md:mb-0">
+                            <div className="flex items-center gap-2 mb-4">
+                              <span className={`flex items-center gap-1.5 ${meta.badge} text-white px-3 py-1 rounded-full text-xs font-semibold`}>
+                                <Icon className="w-3.5 h-3.5" />
+                                {meta.name}
+                              </span>
+                              <span className="flex items-center gap-1 bg-white/70 text-gray-700 px-2.5 py-1 rounded-full text-xs font-medium">
+                                <TypeIcon className="w-3 h-3" />
+                                {typeMeta.name}
+                              </span>
+                            </div>
+                            <h3 className={`text-2xl font-bold ${meta.text} mb-2`}>{set.name}</h3>
+                            {set.description && (
+                              <p className="text-sm text-muted-foreground leading-relaxed">{set.description}</p>
+                            )}
+                            <button className={`mt-6 px-5 py-2.5 ${meta.badge} text-white rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold text-sm`}>
+                              시뮬레이터에서 보기
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {/* 오른쪽: 장비 목록 */}
+                          <div className="md:flex-1 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {set.items.map(item => (
+                              <div
+                                key={item.id}
+                                className="bg-white/70 rounded-lg px-4 py-3 flex items-center gap-2"
+                              >
+                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.badge}`} />
+                                <span className="text-sm text-gray-700 truncate">{item.productName ?? item.categoryName ?? '—'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* 정보 영역 */}
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-blue-900 mb-2">추천 구성</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  합리적인 가격의 실용적인 세트
-                </p>
-
-                {/* 적용된 장비 목록 */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                    <span className="text-muted-foreground">GPS 플로터 (7")</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                    <span className="text-muted-foreground">VHF 무선기</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                    <span className="text-muted-foreground">어군탐지기</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
-                    <p className="text-lg font-bold text-blue-900">
-                      {formatPrice(1450000 + 380000 + 1250000)}
-                    </p>
-                  </div>
-                  <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2 font-semibold text-sm">
-                    더보기
-                    <ArrowRight className="w-4 h-4" />
+              {/* 이전/다음 버튼 */}
+              {allSets.length > 1 && (
+                <>
+                  <button
+                    onClick={() => goTo(currentIndex - 1)}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 rounded-full bg-white shadow-md border border-border flex items-center justify-center hover:bg-gray-50 transition-colors z-10"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* 가심비세트 */}
-            <div
-              onClick={() => handleSetClick('budget')}
-              className="group relative bg-white border-2 border-green-300 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 transition-all cursor-pointer"
-            >
-              {/* 배 이미지 영역 */}
-              <div className="relative bg-gradient-to-b from-blue-100 to-blue-200 h-48 overflow-hidden">
-                <svg
-                  viewBox="0 0 800 450"
-                  className="w-full h-full"
-                  style={{ background: 'linear-gradient(to bottom, #e0f2fe, #bae6fd)' }}
-                >
-                  {/* 바다 파도 */}
-                  <path
-                    d="M 0 400 Q 100 390 200 395 Q 300 400 400 395 Q 500 390 600 395 Q 700 400 800 395 L 800 450 L 0 450 Z"
-                    fill="#3b82f6"
-                    opacity="0.4"
-                  />
-                  {/* 배 본체 */}
-                  <path
-                    d="M 120 280 Q 180 240 250 240 L 550 240 Q 620 240 680 280 L 680 360 Q 620 400 550 400 L 250 400 Q 180 400 120 360 Z"
-                    fill="#ffffff"
-                    stroke="#1e40af"
-                    strokeWidth="4"
-                  />
-                  {/* 플라이브리지 */}
-                  <rect x="280" y="180" width="240" height="80" fill="#f0f9ff" stroke="#1e40af" strokeWidth="2" rx="8" />
-                  {/* 마스트 */}
-                  <line x1="400" y1="180" x2="400" y2="60" stroke="#1e40af" strokeWidth="5" />
-                  <circle cx="400" cy="60" r="18" fill="#1e40af" />
-                </svg>
-                {/* 제품 이미지 오버레이 */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {/* GPS 플로터 (플라이브리지) */}
-                  <div className="absolute" style={{ left: '45%', top: '49%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1723883077281-85d8c2d4e5fc?w=400"
-                      alt="GPS 플로터"
-                      className="w-12 h-12 rounded-lg border-2 border-green-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                  {/* VHF 무선기 (선수부) */}
-                  <div className="absolute" style={{ left: '20%', top: '53%', transform: 'translate(-50%, -50%)' }}>
-                    <img
-                      src="https://images.unsplash.com/photo-1761768611884-383b80ea582d?w=400"
-                      alt="VHF 무선기"
-                      className="w-10 h-10 rounded-lg border-2 border-green-500 bg-white p-1 shadow-lg object-cover"
-                    />
-                  </div>
-                </div>
-                <div className="absolute top-2 left-2 flex items-center gap-2 bg-green-500/90 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                  <Wallet className="w-4 h-4" />
-                  가심비세트
-                </div>
-              </div>
-
-              {/* 정보 영역 */}
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-green-900 mb-2">경제적 구성</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  경제적인 가격의 기본 세트
-                </p>
-
-                {/* 적용된 장비 목록 */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
-                    <span className="text-muted-foreground">GPS 플로터 (9")</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 bg-green-500 rounded-full" />
-                    <span className="text-muted-foreground">VHF 무선기</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">예상 가격</p>
-                    <p className="text-lg font-bold text-green-900">
-                      {formatPrice(1850000 + 380000)}
-                    </p>
-                  </div>
-                  <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 font-semibold text-sm">
-                    더보기
-                    <ArrowRight className="w-4 h-4" />
+                  <button
+                    onClick={() => goTo(currentIndex + 1)}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 rounded-full bg-white shadow-md border border-border flex items-center justify-center hover:bg-gray-50 transition-colors z-10"
+                  >
+                    <ChevronRight className="w-5 h-5" />
                   </button>
+                </>
+              )}
+
+              {/* 도트 인디케이터 */}
+              {allSets.length > 1 && (
+                <div className="flex justify-center gap-2 mt-6">
+                  {allSets.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goTo(index)}
+                      className={`rounded-full transition-all ${
+                        index === currentIndex
+                          ? 'w-6 h-2.5 bg-primary'
+                          : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
+                      }`}
+                    />
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </section>
 

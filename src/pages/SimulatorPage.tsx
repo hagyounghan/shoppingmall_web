@@ -189,9 +189,12 @@ export function SimulatorPage() {
     loadSets();
   }, [isAuthenticated, user?.id]);
 
-  // URL set 파라미터 → pendingPreset에 저장 (즉시 적용 금지 — slugMap/presetSets 미로드 상태)
+  // URL type + set 파라미터 → boatType 설정 + pendingPreset 저장
   useEffect(() => {
     const setParam = searchParams.get('set');
+    const typeParam = searchParams.get('type');
+    if (typeParam === 'fishing') setBoatType('fishing');
+    else if (typeParam === 'leisure') setBoatType('leisure');
     if (setParam && PRESET_SET_KEYS.includes(setParam as PresetKey)) {
       setPendingPreset(setParam as PresetKey);
       window.history.replaceState({}, '', window.location.pathname);
