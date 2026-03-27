@@ -99,16 +99,14 @@ export function UsabilityServicePage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-12">
-          <div className="max-w-lg mx-auto text-center">
-            <h1 className="text-3xl mb-4 text-center">사용성 서비스</h1>
-            <p className="text-center text-muted-foreground mb-8">
-              구매하신 제품을 더 잘 활용할 수 있도록 사용 방법을 안내해드립니다.
-              <br />서비스 이용을 위해 로그인이 필요합니다.
-            </p>
-            <Button onClick={() => navigate(ROUTES.LOGIN, { state: { from: ROUTES.USABILITY_SERVICE } })}>로그인하기</Button>
-          </div>
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-3xl mb-4">사용성 서비스</h1>
+          <p className="text-muted-foreground mb-8">
+            구매하신 제품을 더 잘 활용할 수 있도록 사용 방법을 안내해드립니다.
+            <br />서비스 이용을 위해 로그인이 필요합니다.
+          </p>
+          <Button onClick={() => navigate(ROUTES.LOGIN, { state: { from: ROUTES.USABILITY_SERVICE } })}>로그인하기</Button>
         </div>
       </div>
     );

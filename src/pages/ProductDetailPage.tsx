@@ -294,27 +294,27 @@ export function ProductDetailPage() {
                 />
               ))}
 
-              {/* 총 가격 */}
-              {Object.keys(selectedRelatedProducts).length > 0 && (
-                <div className="pt-4 border-t border-border">
-                  {Object.entries(selectedRelatedProducts).map(([category]) => {
-                    const rp = getSelectedRelated(category);
-                    if (!rp) return null;
-                    return (
-                      <div key={category} className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">{categoryLabels[category] || category}:</span>
-                        <span className="font-semibold">
-                          {rp.product.name} ({formatPrice(rp.product.price)})
-                        </span>
-                      </div>
-                    );
-                  })}
-                  <div className="flex items-center justify-between text-lg font-bold pt-2 border-t border-border">
-                    <span>총 결제금액:</span>
-                    <span className="text-primary">{formatPrice(getTotalPrice())}</span>
-                  </div>
+              {/* 합계 */}
+              <div className="pt-4 border-t border-border space-y-2">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>단가</span>
+                  <span>{formatPrice(product.price)} × {quantity}</span>
                 </div>
-              )}
+                {Object.entries(selectedRelatedProducts).map(([category]) => {
+                  const rp = getSelectedRelated(category);
+                  if (!rp) return null;
+                  return (
+                    <div key={category} className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{categoryLabels[category] || category}</span>
+                      <span>{rp.product.name} ({formatPrice(rp.product.price)})</span>
+                    </div>
+                  );
+                })}
+                <div className="flex items-center justify-between text-xl font-bold pt-2 border-t border-border">
+                  <span>합계</span>
+                  <span className="text-primary">{formatPrice(getTotalPrice())}</span>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-3">
