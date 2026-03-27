@@ -14,13 +14,22 @@ import { API_ENDPOINTS } from '@/config/api';
 import { useAuth } from '@features/auth';
 
 // 장비 위치 정의 — id가 서버 category slug와 1:1 대응
-const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
+const FISHING_POSITIONS: EquipmentPosition[] = [
   { id: 'radar',          name: '레이더',      x: 48, y: 18, category: 'Radar' },
-  { id: 'gps-plotter',    name: 'GPS플로터',  x: 47, y: 32, category: 'GPS' },
-  { id: 'vhf-radio',      name: 'VHF 무선기', x: 40, y: 38, category: 'VHF' },
-  { id: 'autopilot',      name: '자동조타',    x: 54, y: 40, category: 'Autopilot' },
-  { id: 'transducer',     name: '송수파기',    x: 70, y: 48, category: 'Transducer' },
-  { id: 'trolling-motor', name: '트롤링모터',  x: 18, y: 60, category: 'TrollingMotor' },
+  { id: 'gps-plotter',    name: 'GPS플로터',   x: 53, y: 32, category: 'GPS' },
+  { id: 'vhf-radio',      name: 'VHF 무선기',  x: 40, y: 38, category: 'VHF' },
+  { id: 'autopilot',      name: '자동조타',     x: 58, y: 40, category: 'Autopilot' },
+  { id: 'transducer',     name: '송수파기',     x: 70, y: 60, category: 'Transducer' },
+  { id: 'trolling-motor', name: '트롤링모터',   x: 18, y: 60, category: 'TrollingMotor' },
+];
+
+const LEISURE_POSITIONS: EquipmentPosition[] = [
+  { id: 'radar',          name: '레이더',      x: 70, y: 18, category: 'Radar' },
+  { id: 'gps-plotter',    name: 'GPS플로터',   x: 60, y: 32, category: 'GPS' },
+  { id: 'vhf-radio',      name: 'VHF 무선기',  x: 40, y: 38, category: 'VHF' },
+  { id: 'autopilot',      name: '자동조타',     x: 54, y: 40, category: 'Autopilot' },
+  { id: 'transducer',     name: '송수파기',     x: 70, y: 60, category: 'Transducer' },
+  { id: 'trolling-motor', name: '트롤링모터',   x: 18, y: 60, category: 'TrollingMotor' },
 ];
 
 
@@ -69,7 +78,7 @@ export function SimulatorPage() {
   const [applyingSetId, setApplyingSetId] = useState<string | null>(null);
 
   const [selectedEquipment, setSelectedEquipment] = useState<Record<string, SelectedEquipment>>(
-    EQUIPMENT_POSITIONS.reduce((acc, pos) => {
+    LEISURE_POSITIONS.reduce((acc, pos) => {
       acc[pos.id] = { positionId: pos.id, product: null };
       return acc;
     }, {} as Record<string, SelectedEquipment>)
@@ -78,6 +87,16 @@ export function SimulatorPage() {
   const [includeInstallation, setIncludeInstallation] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
+
+  // boatType 변경 시 배치도 초기화
+  useEffect(() => {
+    const positions = boatType === 'fishing' ? FISHING_POSITIONS : LEISURE_POSITIONS;
+    const empty: Record<string, SelectedEquipment> = {};
+    positions.forEach(pos => { empty[pos.id] = { positionId: pos.id, product: null }; });
+    setSelectedEquipment(empty);
+    setSelectedPosition(null);
+    setEditingSetId(null);
+  }, [boatType]);
 
   // 메인+서브 카테고리 전체 로드 (transducer 등 서브 카테고리 포함)
   useEffect(() => {
@@ -213,7 +232,7 @@ export function SimulatorPage() {
     } else {
       // 서버에 프리셋 없으면 장비 초기화만
       const empty: Record<string, SelectedEquipment> = {};
-      EQUIPMENT_POSITIONS.forEach(pos => {
+      equipmentPositions.forEach(pos => {
         empty[pos.id] = { positionId: pos.id, product: null };
       });
       setSelectedEquipment(empty);
@@ -223,6 +242,7 @@ export function SimulatorPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingPreset, slugMap, presetsLoaded]);
 
+  const equipmentPositions = boatType === 'fishing' ? FISHING_POSITIONS : LEISURE_POSITIONS;
   const currentTypeSets = mySets[toApiType(boatType)];
   const canSaveMore = currentTypeSets.length < MAX_SETS;
 
@@ -249,7 +269,7 @@ export function SimulatorPage() {
     Object.entries(slugMap).forEach(([slug, cat]) => { idToSlug[cat.id] = slug; });
 
     const newSelection: Record<string, SelectedEquipment> = {};
-    EQUIPMENT_POSITIONS.forEach(pos => {
+    equipmentPositions.forEach(pos => {
       newSelection[pos.id] = { positionId: pos.id, product: null };
     });
 
@@ -280,7 +300,7 @@ export function SimulatorPage() {
     }
     // 서버 세트가 없으면 비어있는 상태로 초기화
     const newSelection: Record<string, SelectedEquipment> = {};
-    EQUIPMENT_POSITIONS.forEach(pos => {
+    equipmentPositions.forEach(pos => {
       newSelection[pos.id] = { positionId: pos.id, product: null };
     });
     setSelectedEquipment(newSelection);
@@ -373,7 +393,7 @@ export function SimulatorPage() {
     setEditingSetId(null);
     // 배치도 초기화
     const empty: Record<string, SelectedEquipment> = {};
-    EQUIPMENT_POSITIONS.forEach(pos => { empty[pos.id] = { positionId: pos.id, product: null }; });
+    equipmentPositions.forEach(pos => { empty[pos.id] = { positionId: pos.id, product: null }; });
     setSelectedEquipment(empty);
   };
 
@@ -508,7 +528,7 @@ export function SimulatorPage() {
                   className="absolute inset-0 w-full h-full object-fill pointer-events-none"
                 />
                 <div className="absolute inset-0 pointer-events-none" />
-                {EQUIPMENT_POSITIONS.map((position) => {
+                {equipmentPositions.map((position) => {
                   const selected = selectedEquipment[position.id]?.product;
                   return (
                     <div
@@ -550,7 +570,7 @@ export function SimulatorPage() {
                   <p className="text-sm opacity-80">선택된 장비가 없습니다.</p>
                 ) : (
                   selectedProducts.map((product) => {
-                    const position = EQUIPMENT_POSITIONS.find(p => selectedEquipment[p.id]?.product?.id === product.id);
+                    const position = equipmentPositions.find(p => selectedEquipment[p.id]?.product?.id === product.id);
                     return (
                       <div key={product.id} className="flex justify-between items-start pb-3 border-b border-primary-foreground/20">
                         <div className="flex-1">

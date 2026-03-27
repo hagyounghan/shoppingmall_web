@@ -14,6 +14,7 @@ import {
   OrderResponse, ORDER_STATUS_LABELS, OrderStatus, PAYMENT_METHOD_LABELS,
   FeaturedProduct, Notice, Lecture, Faq, InquiryItem,
   ConsultingRequest, ConsultingStatus, CONSULTING_STATUS_LABELS,
+  UsabilityServiceRequest, UsabilityServiceStatus, USABILITY_STATUS_LABELS,
   SimulatorSet, ProductCompanionGroup
 } from '@shared/types';
 import { formatPrice } from '@shared/utils/format';
@@ -109,6 +110,12 @@ export default function AdminDashboard() {
   const [consultingLoading, setConsultingLoading] = useState(false);
   const [consultingDetail, setConsultingDetail] = useState<ConsultingRequest | null>(null);
   const [consultingStatusUpdating, setConsultingStatusUpdating] = useState<string | null>(null);
+
+  // 사용성 서비스
+  const [usabilityRequests, setUsabilityRequests] = useState<UsabilityServiceRequest[]>([]);
+  const [usabilityLoading, setUsabilityLoading] = useState(false);
+  const [usabilityDetail, setUsabilityDetail] = useState<UsabilityServiceRequest | null>(null);
+  const [usabilityStatusUpdating, setUsabilityStatusUpdating] = useState<string | null>(null);
 
   // 주문 관리
   const [orders, setOrders] = useState<OrderResponse[]>([]);
@@ -217,6 +224,7 @@ export default function AdminDashboard() {
     if (currentMenu === 'dashboard') loadStats();
     if (currentMenu === 'products') { loadProducts(); }
     if (currentMenu === 'consulting') loadConsultings();
+    if (currentMenu === 'usability') loadUsabilityRequests();
     if (currentMenu === 'orders') loadOrders();
     if (currentMenu === 'featured') loadFeaturedProducts();
     if (currentMenu === 'notice_mgmt') loadNotices();
@@ -380,6 +388,31 @@ export default function AdminDashboard() {
       alert(err instanceof Error ? err.message : '상태 변경에 실패했습니다.');
     } finally {
       setConsultingStatusUpdating(null);
+    }
+  };
+
+  // 사용성 서비스 로드
+  const loadUsabilityRequests = async () => {
+    setUsabilityLoading(true);
+    try {
+      const res = await apiGet<UsabilityServiceRequest[]>(API_ENDPOINTS.USABILITY_SERVICES);
+      setUsabilityRequests(Array.isArray(res) ? res : []);
+    } catch {
+      setUsabilityRequests([]);
+    } finally {
+      setUsabilityLoading(false);
+    }
+  };
+
+  const handleUsabilityStatusChange = async (id: string, status: UsabilityServiceStatus) => {
+    setUsabilityStatusUpdating(id);
+    try {
+      await apiPatch(API_ENDPOINTS.USABILITY_SERVICE_STATUS(id), { status });
+      setUsabilityRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '상태 변경에 실패했습니다.');
+    } finally {
+      setUsabilityStatusUpdating(null);
     }
   };
 
@@ -1008,6 +1041,7 @@ export default function AdminDashboard() {
           <MenuButton icon={<Layout size={20}/>} label="메인/추천 관리" isActive={currentMenu === 'main_mgmt'} onClick={() => setCurrentMenu('main_mgmt')} />
           <MenuButton icon={<Star size={20}/>} label="소개 장비 관리" isActive={currentMenu === 'featured'} onClick={() => setCurrentMenu('featured')} />
           <MenuButton icon={<MessageCircle size={20}/>} label="컨설팅 신청 내역" isActive={currentMenu === 'consulting'} onClick={() => setCurrentMenu('consulting')} />
+          <MenuButton icon={<FileText size={20}/>} label="사용성 서비스 내역" isActive={currentMenu === 'usability'} onClick={() => setCurrentMenu('usability')} />
           <div className="pt-2 pb-1 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">콘텐츠 관리</div>
           <MenuButton icon={<Megaphone size={20}/>} label="공지사항 관리" isActive={currentMenu === 'notice_mgmt'} onClick={() => setCurrentMenu('notice_mgmt')} />
           <MenuButton icon={<BookOpen size={20}/>} label="강의 관리" isActive={currentMenu === 'lecture_mgmt'} onClick={() => setCurrentMenu('lecture_mgmt')} />
@@ -1637,6 +1671,79 @@ export default function AdminDashboard() {
                               className="text-xs border rounded px-2 py-1 bg-white disabled:opacity-50">
                               <option value="PENDING">대기중</option>
                               <option value="IN_PROGRESS">진행중</option>
+                              <option value="COMPLETED">완료</option>
+                              <option value="CANCELLED">취소</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* [사용성 서비스 내역] */}
+        {currentMenu === 'usability' && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-black">사용성 서비스 신청 내역</h2>
+
+            {/* 상세 모달 */}
+            {usabilityDetail && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-bold text-lg">{usabilityDetail.title}</h3>
+                    <button onClick={() => setUsabilityDetail(null)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                  </div>
+                  <div className="text-xs text-slate-400 space-y-1">
+                    <p>사용자 ID: {usabilityDetail.userId}</p>
+                    <p>상태: {USABILITY_STATUS_LABELS[usabilityDetail.status]}</p>
+                    <p>신청일: {formatDate(usabilityDetail.createdAt)}</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-lg text-sm whitespace-pre-wrap">{usabilityDetail.content}</div>
+                  <button onClick={() => setUsabilityDetail(null)}
+                    className="w-full bg-slate-800 text-white py-2 rounded-lg font-bold">닫기</button>
+                </div>
+              </div>
+            )}
+
+            {usabilityLoading ? (
+              <div className="p-8 text-center text-slate-400">불러오는 중...</div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                {usabilityRequests.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400">
+                    <p className="font-medium">사용성 서비스 신청 내역이 없습니다.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b text-sm">
+                      <tr>
+                        <th className="p-4">제목</th>
+                        <th className="p-4">사용자 ID</th>
+                        <th className="p-4 text-center">상태</th>
+                        <th className="p-4">신청일</th>
+                        <th className="p-4 text-center">상태 변경</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usabilityRequests.map(r => (
+                        <tr key={r.id} className="border-b text-sm hover:bg-slate-50 cursor-pointer" onClick={() => setUsabilityDetail(r)}>
+                          <td className="p-4 font-bold"><FileText size={14} className="inline mr-2 text-slate-400"/>{r.title}</td>
+                          <td className="p-4 text-slate-500 font-mono text-xs">{r.userId?.slice(0, 8)}...</td>
+                          <td className="p-4 text-center">
+                            <UsabilityStatusBadge status={r.status as UsabilityServiceStatus}/>
+                          </td>
+                          <td className="p-4 text-xs text-slate-400">{formatDate(r.createdAt)}</td>
+                          <td className="p-4 text-center" onClick={(e) => e.stopPropagation()}>
+                            <select value={r.status} disabled={usabilityStatusUpdating === r.id}
+                              onChange={(e) => handleUsabilityStatusChange(r.id, e.target.value as UsabilityServiceStatus)}
+                              className="text-xs border rounded px-2 py-1 bg-white disabled:opacity-50">
+                              <option value="PENDING">접수중</option>
+                              <option value="IN_PROGRESS">처리중</option>
                               <option value="COMPLETED">완료</option>
                               <option value="CANCELLED">취소</option>
                             </select>
@@ -2537,6 +2644,20 @@ function ConsultingStatusBadge({ status }: { status: ConsultingStatus }) {
   return (
     <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${colorMap[status] ?? 'bg-slate-100 text-slate-400'}`}>
       {CONSULTING_STATUS_LABELS[status] ?? status}
+    </span>
+  );
+}
+
+function UsabilityStatusBadge({ status }: { status: UsabilityServiceStatus }) {
+  const colorMap: Record<UsabilityServiceStatus, string> = {
+    PENDING: 'bg-yellow-100 text-yellow-600',
+    IN_PROGRESS: 'bg-blue-100 text-blue-600',
+    COMPLETED: 'bg-green-100 text-green-600',
+    CANCELLED: 'bg-red-100 text-red-500',
+  };
+  return (
+    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${colorMap[status] ?? 'bg-slate-100 text-slate-400'}`}>
+      {USABILITY_STATUS_LABELS[status] ?? status}
     </span>
   );
 }

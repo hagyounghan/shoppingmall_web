@@ -58,6 +58,7 @@ export const API_ENDPOINTS = {
   USABILITY_SERVICES: '/usability-services',
   USABILITY_SERVICES_ME: '/usability-services/me',
   USABILITY_SERVICE_ITEM: (id: string) => `/usability-services/${id}`,
+  USABILITY_SERVICE_STATUS: (id: string) => `/usability-services/${id}/status`,
 
   // Simulator (인증 필요)
   SIMULATOR_SETS: '/simulator/sets',
