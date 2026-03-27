@@ -56,6 +56,55 @@ export function ProductDetailPage() {
 
   const { data: product, isLoading, isError } = useProductDetail(id ?? '');
 
+  // 옵션이 없으면 기본 상품을 orderItems에 초기화 (훅은 early return 위에 있어야 함)
+  useEffect(() => {
+    if (!product?.options?.length && product) {
+      setOrderItems([{ key: 'base', name: product.name, price: product.price, quantity: 1, productId: product.id }]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
+
+  // 옵션 선택 → orderItems 동기화
+  const handleOptionSelect = useCallback((optionName: string) => {
+    if (!product) return;
+    setSelectedOption(optionName);
+    if (!optionName) {
+      setOrderItems((prev) => prev.filter((i) => i.key !== 'option'));
+      return;
+    }
+    const opt = product.options?.find((o) => o.name === optionName);
+    if (!opt) return;
+    setOrderItems((prev) => [
+      ...prev.filter((i) => i.key !== 'option'),
+      { key: 'option', name: opt.name, price: opt.price || product.price, quantity: 1, productId: product.id, optionId: opt.id },
+    ]);
+  }, [product]);
+
+  // 동반상품 선택 → orderItems 동기화
+  const handleCompanionSelect = useCallback((groupId: string, productId: string) => {
+    if (!product) return;
+    setSelectedCompanions((prev) => {
+      const next = { ...prev };
+      if (!productId) delete next[groupId];
+      else next[groupId] = productId;
+      return next;
+    });
+    const itemKey = `companion-${groupId}`;
+    if (!productId) {
+      setOrderItems((prev) => prev.filter((i) => i.key !== itemKey));
+      return;
+    }
+    const group = (product.companionGroups ?? []).find((g) => g.id === groupId);
+    const cItem = group?.items.find((i) => (i.companionProduct ?? i.product)?.id === productId);
+    if (!cItem) return;
+    const cp = cItem.companionProduct ?? cItem.product;
+    if (!cp) return;
+    setOrderItems((prev) => [
+      ...prev.filter((i) => i.key !== itemKey),
+      { key: itemKey, name: cp.name, price: cp.price, quantity: 1, productId: cp.id },
+    ]);
+  }, [product]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -87,53 +136,6 @@ export function ProductDetailPage() {
     : [product.image];
 
   const useCompanionGroups = (product.companionGroups ?? []).length > 0;
-
-  // 옵션이 없으면 기본 상품을 orderItems에 초기화
-  useEffect(() => {
-    if (!product.options?.length) {
-      setOrderItems([{ key: 'base', name: product.name, price: product.price, quantity: 1, productId: product.id }]);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product.id]);
-
-  // 옵션 선택 → orderItems 동기화
-  const handleOptionSelect = useCallback((optionName: string) => {
-    setSelectedOption(optionName);
-    if (!optionName) {
-      setOrderItems((prev) => prev.filter((i) => i.key !== 'option'));
-      return;
-    }
-    const opt = product.options?.find((o) => o.name === optionName);
-    if (!opt) return;
-    setOrderItems((prev) => [
-      ...prev.filter((i) => i.key !== 'option'),
-      { key: 'option', name: opt.name, price: opt.price || product.price, quantity: 1, productId: product.id, optionId: opt.id },
-    ]);
-  }, [product]);
-
-  // 동반상품 선택 → orderItems 동기화
-  const handleCompanionSelect = useCallback((groupId: string, productId: string) => {
-    setSelectedCompanions((prev) => {
-      const next = { ...prev };
-      if (!productId) delete next[groupId];
-      else next[groupId] = productId;
-      return next;
-    });
-    const itemKey = `companion-${groupId}`;
-    if (!productId) {
-      setOrderItems((prev) => prev.filter((i) => i.key !== itemKey));
-      return;
-    }
-    const group = (product.companionGroups ?? []).find((g) => g.id === groupId);
-    const cItem = group?.items.find((i) => (i.companionProduct ?? i.product)?.id === productId);
-    if (!cItem) return;
-    const cp = cItem.companionProduct ?? cItem.product;
-    if (!cp) return;
-    setOrderItems((prev) => [
-      ...prev.filter((i) => i.key !== itemKey),
-      { key: itemKey, name: cp.name, price: cp.price, quantity: 1, productId: cp.id },
-    ]);
-  }, [product]);
 
   // 기존 relatedProducts (구형 호환)
   const handleRelatedProductChange = (category: string, productId: string) => {

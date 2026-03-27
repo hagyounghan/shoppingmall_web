@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Wrench, MessageSquare, Youtube } from 'lucide-react';
+import { Wrench, ShoppingBag, Youtube } from 'lucide-react';
 import { ROUTES } from '@shared/constants/routes';
 
 export function QuickButtons() {
@@ -8,22 +8,22 @@ export function QuickButtons() {
       <Link
         to={ROUTES.SERVICE_REQUEST}
         className="group relative bg-primary text-primary-foreground p-4 rounded-full shadow-lg hover:bg-primary/90 transition-all hover:scale-110"
-        title="A/S 신청"
+        title="사용성 서비스"
       >
         <Wrench className="w-6 h-6" />
         <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-background px-3 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          A/S 신청
+          사용성 서비스
         </span>
       </Link>
 
       <Link
         to={ROUTES.CONSULTING_BOOKING}
         className="group relative bg-accent text-accent-foreground p-4 rounded-full shadow-lg hover:bg-accent/90 transition-all hover:scale-110"
-        title="컨설팅"
+        title="구매 컨설팅"
       >
-        <MessageSquare className="w-6 h-6" />
+        <ShoppingBag className="w-6 h-6" />
         <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-background px-3 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          컨설팅
+          구매 컨설팅
         </span>
       </Link>
 

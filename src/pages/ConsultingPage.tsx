@@ -62,21 +62,21 @@ export function ConsultingPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <LogIn className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">로그인이 필요합니다</h2>
-          <p className="text-muted-foreground mb-6">컨설팅 예약은 회원만 이용할 수 있습니다.</p>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-sm w-full">
+          <LogIn className="w-14 h-14 mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold mb-2">로그인이 필요합니다</h2>
+          <p className="text-muted-foreground text-sm mb-6">구매 컨설팅 예약은 회원만 이용할 수 있습니다.</p>
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => navigate(ROUTES.LOGIN)}
-              className="px-6 py-3 bg-primary text-primary-foreground hover:bg-accent transition-colors"
+              className="px-5 py-2.5 bg-primary text-primary-foreground hover:bg-accent transition-colors rounded-lg text-sm font-semibold"
             >
               로그인하기
             </button>
             <button
               onClick={() => navigate(-1)}
-              className="px-6 py-3 border border-border hover:bg-secondary transition-colors"
+              className="px-5 py-2.5 border border-border hover:bg-secondary transition-colors rounded-lg text-sm"
             >
               돌아가기
             </button>

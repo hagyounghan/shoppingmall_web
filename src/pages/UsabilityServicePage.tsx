@@ -107,14 +107,24 @@ export function UsabilityServicePage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-3xl mb-4">사용성 서비스</h1>
-          <p className="text-muted-foreground mb-8">
-            구매하신 제품을 더 잘 활용할 수 있도록 사용 방법을 안내해드립니다.
-            <br />서비스 이용을 위해 로그인이 필요합니다.
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-sm w-full">
+          <HelpCircle className="w-14 h-14 mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold mb-2">로그인이 필요합니다</h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            사용성 서비스 이용을 위해 로그인이 필요합니다.
           </p>
-          <Button onClick={() => navigate(ROUTES.LOGIN, { state: { from: ROUTES.USABILITY_SERVICE } })}>로그인하기</Button>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => navigate(ROUTES.LOGIN, { state: { from: ROUTES.USABILITY_SERVICE } })}>
+              로그인하기
+            </Button>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-5 py-2.5 border border-border hover:bg-secondary transition-colors rounded-lg text-sm"
+            >
+              돌아가기
+            </button>
+          </div>
         </div>
       </div>
     );
