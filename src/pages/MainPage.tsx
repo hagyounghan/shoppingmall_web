@@ -11,12 +11,12 @@ import { SimulatorSet, SimulatorType } from "@shared/types";
 
 // SimulatorPage의 EQUIPMENT_POSITIONS와 동일
 const EQUIPMENT_POSITIONS = [
-  { id: 'gps-plotter',    name: 'GPS플로터',  x: 50, y: 40 },
-  { id: 'radar',          name: '레이더',      x: 56, y: 28 },
-  { id: 'vhf-radio',      name: 'VHF 무선기', x: 43, y: 44 },
-  { id: 'trolling-motor', name: '트롤링모터',  x: 35, y: 56 },
-  { id: 'transducer',     name: '송수파기',    x: 70, y: 56 },
-  { id: 'autopilot',      name: '자동조타',    x: 60, y: 50 },
+  { id: 'radar',          name: '레이더',      x: 48, y: 18 },
+  { id: 'gps-plotter',    name: 'GPS플로터',  x: 47, y: 32 },
+  { id: 'vhf-radio',      name: 'VHF 무선기', x: 40, y: 38 },
+  { id: 'autopilot',      name: '자동조타',    x: 54, y: 40 },
+  { id: 'transducer',     name: '송수파기',    x: 70, y: 48 },
+  { id: 'trolling-motor', name: '트롤링모터',  x: 18, y: 60 },
 ] as const;
 
 const PRESET_LABEL: Record<string, { name: string; icon: typeof Crown; badge: string }> = {

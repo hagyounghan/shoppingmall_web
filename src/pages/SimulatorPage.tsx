@@ -15,12 +15,12 @@ import { useAuth } from '@features/auth';
 
 // 장비 위치 정의 — id가 서버 category slug와 1:1 대응
 const EQUIPMENT_POSITIONS: EquipmentPosition[] = [
-  { id: 'gps-plotter',    name: 'GPS플로터',  x: 50, y: 40, category: 'GPS' },
-  { id: 'radar',          name: '레이더',      x: 56, y: 28, category: 'Radar' },
-  { id: 'vhf-radio',      name: 'VHF 무선기', x: 43, y: 44, category: 'VHF' },
-  { id: 'trolling-motor', name: '트롤링모터',  x: 35, y: 56, category: 'TrollingMotor' },
-  { id: 'transducer',     name: '송수파기',    x: 70, y: 56, category: 'Transducer' },
-  { id: 'autopilot',      name: '자동조타',    x: 60, y: 50, category: 'Autopilot' },
+  { id: 'radar',          name: '레이더',      x: 48, y: 18, category: 'Radar' },
+  { id: 'gps-plotter',    name: 'GPS플로터',  x: 47, y: 32, category: 'GPS' },
+  { id: 'vhf-radio',      name: 'VHF 무선기', x: 40, y: 38, category: 'VHF' },
+  { id: 'autopilot',      name: '자동조타',    x: 54, y: 40, category: 'Autopilot' },
+  { id: 'transducer',     name: '송수파기',    x: 70, y: 48, category: 'Transducer' },
+  { id: 'trolling-motor', name: '트롤링모터',  x: 18, y: 60, category: 'TrollingMotor' },
 ];
 
 
