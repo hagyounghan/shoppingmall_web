@@ -37,7 +37,6 @@ export function MainPage() {
   const { data: bestProducts = [] } = useTopProducts(5);
   const [allSets, setAllSets] = useState<SimulatorSet[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -52,18 +51,17 @@ export function MainPage() {
   }, []);
 
   useEffect(() => {
-    if (allSets.length <= 1 || paused) return;
+    if (allSets.length <= 1) return;
     timerRef.current = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % allSets.length);
     }, SLIDE_INTERVAL);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [allSets.length, paused]);
+  }, [allSets.length]);
 
   const goTo = (index: number) => {
     setCurrentIndex((index + allSets.length) % allSets.length);
-    // 수동 이동 시 타이머 리셋
     if (timerRef.current) clearInterval(timerRef.current);
-    if (!paused && allSets.length > 1) {
+    if (allSets.length > 1) {
       timerRef.current = setInterval(() => {
         setCurrentIndex(prev => (prev + 1) % allSets.length);
       }, SLIDE_INTERVAL);
@@ -158,11 +156,7 @@ export function MainPage() {
               등록된 추천 세트가 없습니다.
             </div>
           ) : (
-            <div
-              className="relative"
-              onMouseEnter={() => setPaused(true)}
-              onMouseLeave={() => setPaused(false)}
-            >
+            <div className="relative">
               {/* 카드 */}
               <div className="overflow-hidden">
                 {allSets.map((set, index) => {
@@ -194,9 +188,6 @@ export function MainPage() {
                             {typeMeta.name}
                           </span>
                           <h3 className="text-lg font-bold ml-1">{set.name}</h3>
-                          <span className="ml-auto flex items-center gap-1.5 text-primary text-sm font-semibold group-hover:gap-2.5 transition-all">
-                            시뮬레이터에서 보기 <ArrowRight className="w-4 h-4" />
-                          </span>
                         </div>
 
                         {/* 배 + 장비 배치도 */}
