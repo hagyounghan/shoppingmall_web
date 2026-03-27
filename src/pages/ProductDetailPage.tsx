@@ -684,7 +684,7 @@ function ProductReviews({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 pr-20">
         <h3 className="text-xl">상품 리뷰 <span className="text-muted-foreground text-base">({total})</span></h3>
         <button
           onClick={() => navigate('/my')}
@@ -812,7 +812,7 @@ function ProductInquiries({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 pr-20">
         <h3 className="text-xl">상품 문의 <span className="text-muted-foreground text-base">({total})</span></h3>
         {isAuthenticated ? (
           <button
