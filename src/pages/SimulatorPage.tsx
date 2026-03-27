@@ -6,10 +6,10 @@ import { Button } from '@shared/components/ui/button';
 import { Input } from '@shared/components/ui/input';
 import {
   Search, X, Crown, TrendingUp, Wallet, Sparkles, Ship, Anchor,
-  Save, Loader2, Trash2
+  Save, Loader2, Trash2, Edit2
 } from 'lucide-react';
 import { BRANDS } from '@shared/constants/brands';
-import { apiGet, apiPost, apiDelete } from '@/lib/api-client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuth } from '@features/auth';
 
@@ -65,6 +65,8 @@ export function SimulatorPage() {
   const [setsLoading, setSetsLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [editingSetId, setEditingSetId] = useState<string | null>(null);
+  const [applyingSetId, setApplyingSetId] = useState<string | null>(null);
 
   const [selectedEquipment, setSelectedEquipment] = useState<Record<string, SelectedEquipment>>(
     EQUIPMENT_POSITIONS.reduce((acc, pos) => {
@@ -298,13 +300,8 @@ export function SimulatorPage() {
       alert('장비를 선택한 후 저장하세요.');
       return;
     }
-    if (!canSaveMore) {
-      alert(`${boatType === 'fishing' ? '어선용' : '레저용'} 세트는 최대 ${MAX_SETS}개까지 저장할 수 있습니다.`);
-      return;
-    }
 
     const apiType = toApiType(boatType);
-    const setName = `${boatType === 'fishing' ? '어선용' : '레저용'} 세트 ${currentTypeSets.length + 1}`;
     const items = selectedList.map(eq => ({
       productId: eq.product!.id,
       categoryId: eq.product!.categoryId || eq.positionId,
@@ -312,23 +309,69 @@ export function SimulatorPage() {
 
     setSaveLoading(true);
     try {
-      const saved = await apiPost<SimulatorSet>(API_ENDPOINTS.SIMULATOR_SETS, {
-        type: apiType,
-        name: setName,
-        description: `총 ${selectedList.length}개 장비 · ${formatPrice(calculateTotal())}`,
-        items,
-      });
-      setMySets(prev => ({
-        ...prev,
-        [apiType]: [...prev[apiType], saved],
-      }));
+      if (editingSetId) {
+        // ── 수정 모드: PATCH ──────────────────────────────────────────
+        const updated = await apiPatch<SimulatorSet>(API_ENDPOINTS.SIMULATOR_SET(editingSetId), {
+          items,
+          description: `총 ${selectedList.length}개 장비 · ${formatPrice(calculateTotal())}`,
+        });
+        setMySets(prev => ({
+          ...prev,
+          [apiType]: prev[apiType].map(s => s.id === editingSetId ? { ...s, ...updated } : s),
+        }));
+        setEditingSetId(null);
+      } else {
+        // ── 신규 저장: POST ───────────────────────────────────────────
+        if (!canSaveMore) {
+          alert(`${boatType === 'fishing' ? '어선용' : '레저용'} 세트는 최대 ${MAX_SETS}개까지 저장할 수 있습니다.`);
+          return;
+        }
+        const setName = `${boatType === 'fishing' ? '어선용' : '레저용'} 세트 ${currentTypeSets.length + 1}`;
+        const saved = await apiPost<SimulatorSet>(API_ENDPOINTS.SIMULATOR_SETS, {
+          type: apiType,
+          name: setName,
+          description: `총 ${selectedList.length}개 장비 · ${formatPrice(calculateTotal())}`,
+          items,
+        });
+        setMySets(prev => ({
+          ...prev,
+          [apiType]: [...prev[apiType], saved],
+        }));
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
-      alert('세트 저장에 실패했습니다. 실제 등록된 상품으로 구성해야 저장됩니다.');
+      alert(editingSetId ? '세트 수정에 실패했습니다.' : '세트 저장에 실패했습니다. 실제 등록된 상품으로 구성해야 저장됩니다.');
     } finally {
       setSaveLoading(false);
     }
+  };
+
+  /** 내 세트를 배치도에 불러오기 (수정 없이 적용만) */
+  const handleLoadMySet = async (set: SimulatorSet) => {
+    setApplyingSetId(set.id);
+    await applyServerSet(set);
+    setApplyingSetId(null);
+    // 상단 배치도로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /** 내 세트 수정 모드 진입 — 배치도에 적용 + editingSetId 설정 */
+  const handleEditMySet = async (set: SimulatorSet) => {
+    setApplyingSetId(set.id);
+    await applyServerSet(set);
+    setApplyingSetId(null);
+    setEditingSetId(set.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /** 수정 모드 취소 */
+  const handleCancelEdit = () => {
+    setEditingSetId(null);
+    // 배치도 초기화
+    const empty: Record<string, SelectedEquipment> = {};
+    EQUIPMENT_POSITIONS.forEach(pos => { empty[pos.id] = { positionId: pos.id, product: null }; });
+    setSelectedEquipment(empty);
   };
 
   const handleDeleteSet = async (setId: string, type: SimulatorType) => {
@@ -339,6 +382,7 @@ export function SimulatorPage() {
         ...prev,
         [type]: prev[type].filter(s => s.id !== setId),
       }));
+      if (editingSetId === setId) setEditingSetId(null);
     } catch {
       alert('삭제에 실패했습니다.');
     }
@@ -529,24 +573,40 @@ export function SimulatorPage() {
               </div>
 
               {/* 저장 상태 표시 */}
-              {isAuthenticated && (
+              {isAuthenticated && !editingSetId && (
                 <div className="text-xs opacity-70 text-center mb-2">
                   {boatType === 'fishing' ? '어선용' : '레저용'} 저장 세트: {currentTypeSets.length} / {MAX_SETS}
                 </div>
               )}
+              {isAuthenticated && editingSetId && (
+                <div className="text-xs text-yellow-300 text-center py-1 mb-2 flex items-center justify-center gap-1">
+                  <Edit2 className="w-3 h-3" /> 세트 수정 중 — 장비를 변경하고 저장하세요
+                </div>
+              )}
               {saveSuccess && (
-                <div className="text-xs text-green-300 text-center py-1 mb-2">세트가 저장되었습니다!</div>
+                <div className="text-xs text-green-300 text-center py-1 mb-2">
+                  {editingSetId ? '세트가 수정되었습니다!' : '세트가 저장되었습니다!'}
+                </div>
               )}
 
               <Button
-                className="w-full bg-white/10 text-white hover:bg-white/20 border border-white/20 mb-3"
+                className="w-full bg-white/10 text-white hover:bg-white/20 border border-white/20 mb-2"
                 size="sm"
-                disabled={selectedProducts.length === 0 || saveLoading || (isAuthenticated && !canSaveMore)}
+                disabled={selectedProducts.length === 0 || saveLoading || (isAuthenticated && !editingSetId && !canSaveMore)}
                 onClick={handleSaveSet}
               >
                 {saveLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                {!isAuthenticated ? '로그인 후 저장' : !canSaveMore ? `저장 한도 초과 (${MAX_SETS}개)` : '내 세트 저장'}
+                {!isAuthenticated ? '로그인 후 저장' : editingSetId ? '수정 완료' : !canSaveMore ? `저장 한도 초과 (${MAX_SETS}개)` : '내 세트 저장'}
               </Button>
+              {editingSetId && (
+                <Button
+                  className="w-full bg-white/5 text-white/70 hover:bg-white/10 border border-white/10 mb-1"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                >
+                  <X className="w-4 h-4 mr-2" /> 수정 취소
+                </Button>
+              )}
               <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" disabled={selectedProducts.length === 0}>
                 견적 문의하기
               </Button>
@@ -573,25 +633,58 @@ export function SimulatorPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {currentTypeSets.map((set) => (
-                  <div key={set.id} className="border border-border rounded-lg p-4 hover:border-primary transition-colors">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-sm">{set.name}</h3>
-                      <button
-                        onClick={() => handleDeleteSet(set.id, toApiType(boatType))}
-                        className="text-muted-foreground hover:text-destructive transition-colors ml-2 flex-shrink-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                {currentTypeSets.map((set) => {
+                  const isApplying = applyingSetId === set.id;
+                  const isEditing = editingSetId === set.id;
+                  return (
+                    <div
+                      key={set.id}
+                      className={`border-2 rounded-lg p-4 transition-all ${
+                        isEditing
+                          ? 'border-amber-400 bg-amber-50 shadow-md'
+                          : 'border-border hover:border-primary hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-sm flex items-center gap-1">
+                          {isEditing && <Edit2 className="w-3 h-3 text-amber-500 shrink-0" />}
+                          {set.name}
+                        </h3>
+                        <button
+                          onClick={() => handleDeleteSet(set.id, toApiType(boatType))}
+                          className="text-muted-foreground hover:text-destructive transition-colors ml-2 flex-shrink-0"
+                          title="세트 삭제"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {set.description && (
+                        <p className="text-xs text-muted-foreground mb-2 line-clamp-1">{set.description}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mb-3">
+                        장비 {set.items.length}개 · {new Date(set.createdAt).toLocaleDateString('ko-KR')}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleLoadMySet(set)}
+                          disabled={isApplying || presetApplying}
+                          className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 px-2 rounded border border-primary text-primary hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
+                        >
+                          {isApplying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                          불러오기
+                        </button>
+                        <button
+                          onClick={() => handleEditMySet(set)}
+                          disabled={isApplying || presetApplying}
+                          className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 px-2 rounded border border-amber-400 text-amber-600 hover:bg-amber-400 hover:text-white transition-colors disabled:opacity-50"
+                        >
+                          {isApplying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Edit2 className="w-3 h-3" />}
+                          수정
+                        </button>
+                      </div>
                     </div>
-                    {set.description && (
-                      <p className="text-xs text-muted-foreground mb-3">{set.description}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      장비 {set.items.length}개 · {new Date(set.createdAt).toLocaleDateString('ko-KR')}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
