@@ -6,6 +6,7 @@ import { Trash2, Plus, Minus } from 'lucide-react';
 import { Alert, AlertDescription } from '@shared/components/ui/alert';
 import { ShoppingBag } from 'lucide-react';
 import { useCart } from '@features/cart';
+import { SHIPPING } from '@shared/constants/shipping';
 
 export function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCart();
@@ -135,20 +136,20 @@ export function CartPage() {
                 <div className="flex justify-between text-muted-foreground">
                   <span>배송비</span>
                   <span>
-                    {totalPrice >= 50000 ? '무료' : formatPrice(3000)}
+                    {totalPrice >= SHIPPING.FREE_THRESHOLD ? '무료' : formatPrice(SHIPPING.FEE)}
                   </span>
                 </div>
                 <div className="border-t border-border pt-3 flex justify-between text-lg font-bold">
                   <span>총 결제금액</span>
                   <span className="text-primary">
-                    {formatPrice(totalPrice + (totalPrice >= 50000 ? 0 : 3000))}
+                    {formatPrice(totalPrice + (totalPrice >= SHIPPING.FREE_THRESHOLD ? 0 : SHIPPING.FEE))}
                   </span>
                 </div>
               </div>
 
-              {totalPrice < 50000 && (
+              {totalPrice < SHIPPING.FREE_THRESHOLD && (
                 <div className="mb-4 p-3 bg-secondary rounded text-sm text-muted-foreground">
-                  {formatPrice(50000 - totalPrice)}원 더 구매하면 무료배송!
+                  {formatPrice(SHIPPING.FREE_THRESHOLD - totalPrice)}원 더 구매하면 무료배송!
                 </div>
               )}
 

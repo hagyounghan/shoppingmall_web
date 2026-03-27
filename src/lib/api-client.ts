@@ -2,6 +2,8 @@
 
 import { API_CONFIG } from '../config/api';
 
+const isDev = import.meta.env.DEV;
+
 export interface ApiError {
   message: string;
   status: number;
@@ -36,7 +38,7 @@ async function apiRequest<T>(
   const url = `${API_CONFIG.baseURL}${endpoint}`;
   const method = (fetchOptions.method ?? 'GET').toUpperCase();
 
-  console.log(`[API] ▶ ${method} ${url}`);
+  if (isDev) console.log(`[API] ▶ ${method} ${url}`);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -62,7 +64,7 @@ async function apiRequest<T>(
         message: response.statusText,
       }));
 
-      console.error(`[API] ✗ ${method} ${url} → ${response.status} ${response.statusText}`, errorData);
+      if (isDev) console.error(`[API] ✗ ${method} ${url} → ${response.status} ${response.statusText}`, errorData);
 
       throw new ApiClientError(
         errorData.message || `HTTP Error: ${response.status}`,
@@ -73,7 +75,7 @@ async function apiRequest<T>(
 
     // 204 No Content 등의 경우 빈 응답 처리
     if (response.status === 204) {
-      console.log(`[API] ✓ ${method} ${url} → 204 No Content`);
+      if (isDev) console.log(`[API] ✓ ${method} ${url} → 204 No Content`);
       return undefined as T;
     }
 
@@ -88,7 +90,7 @@ async function apiRequest<T>(
       (result && typeof result === 'object' && 'data' in (result as object) && Array.isArray((result as {data: unknown}).data))
         ? ` (${(result as {data: unknown[]}).data.length}건)`
         : '';
-    console.log(`[API] ✓ ${method} ${url} → ${response.status}${count}`);
+    if (isDev) console.log(`[API] ✓ ${method} ${url} → ${response.status}${count}`);
 
     return result;
   } catch (error) {
@@ -100,10 +102,10 @@ async function apiRequest<T>(
 
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
-        console.error(`[API] ✗ ${method} ${url} → TIMEOUT`);
+        if (isDev) console.error(`[API] ✗ ${method} ${url} → TIMEOUT`);
         throw new ApiClientError('Request timeout', 408, 'Request Timeout');
       }
-      console.error(`[API] ✗ ${method} ${url} → Network Error:`, error.message);
+      if (isDev) console.error(`[API] ✗ ${method} ${url} → Network Error:`, error.message);
       throw new ApiClientError(error.message, 0, 'Network Error');
     }
 

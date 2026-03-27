@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthUser, AuthResponse } from '@shared/types';
 import { apiPost, apiGet, ApiClientError } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';

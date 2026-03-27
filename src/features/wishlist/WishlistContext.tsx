@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { WishlistItemUI, Product } from '@shared/types';
 import { apiGet, apiPost, apiDelete } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';

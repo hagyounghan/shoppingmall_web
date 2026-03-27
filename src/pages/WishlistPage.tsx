@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@shared/components/ui/alert';
 import { useWishlist } from '@features/wishlist';
 import { useCart } from '@features/cart';
 import { useAuth } from '@features/auth';
+import { Product } from '@shared/types';
 
 export function WishlistPage() {
   const { items, removeByProductId, isLoading } = useWishlist();
@@ -66,7 +67,7 @@ export function WishlistPage() {
         name: item.name,
         price: item.price,
         image: item.image,
-      } as any);
+      } as Product);
     }
   };
 
@@ -115,7 +116,7 @@ export function WishlistPage() {
                       name: item.name,
                       price: item.price,
                       image: item.image,
-                    } as any);
+                    } as Product);
                   }}
                 >
                   <ShoppingCart className="h-4 w-4" />

@@ -5,6 +5,7 @@ import { useCart } from '@features/cart';
 import { apiPost } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
 import { ROUTES } from '@shared/constants/routes';
+import { SHIPPING } from '@shared/constants/shipping';
 import { formatPrice } from '@shared/utils/format';
 import { Button } from '@shared/components/ui/button';
 import { Input } from '@shared/components/ui/input';
@@ -75,7 +76,7 @@ export function OrderPage() {
   };
 
   const totalPrice = getTotalPrice();
-  const shippingFee = totalPrice >= 50000 ? 0 : 3000;
+  const shippingFee = totalPrice >= SHIPPING.FREE_THRESHOLD ? 0 : SHIPPING.FEE;
 
   if (items.length === 0 && !success) {
     return (

@@ -40,7 +40,7 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
         setMainCategories(list);
         setSlugMap(map);
       })
-      .catch(e => console.error('[CategoryContext] 메인 카테고리 로드 실패:', e))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

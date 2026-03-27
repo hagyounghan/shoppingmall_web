@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { RichTextEditor } from '@/shared/ui/RichTextEditor';
 import {
   LayoutDashboard, Package, MessageCircle, Megaphone,

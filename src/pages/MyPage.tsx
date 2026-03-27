@@ -5,7 +5,7 @@ import { useAuth } from '@features/auth';
 import { apiGet, apiPost } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
 import { ROUTES } from '@shared/constants/routes';
-import { formatPrice } from '@shared/utils/format';
+import { formatPrice, formatDate } from '@shared/utils/format';
 import { ImageWithFallback } from '@shared/components/figma/ImageWithFallback';
 import {
   OrderResponse,
@@ -14,23 +14,9 @@ import {
   CONSULTING_STATUS_LABELS,
   UsabilityServiceRequest,
   USABILITY_STATUS_LABELS,
+  PurchasedProduct,
+  PaginatedResponse,
 } from '@shared/types';
-
-interface PurchasedProduct {
-  id: string;
-  name: string;
-  image: string | null;
-  price: number;
-  purchasedAt: string;
-}
-
-interface PaginatedPurchased {
-  data: PurchasedProduct[];
-  total: number;
-  page: number;
-  take: number;
-  totalPages: number;
-}
 
 function StarSelector({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
@@ -44,10 +30,6 @@ function StarSelector({ value, onChange }: { value: number; onChange: (v: number
       ))}
     </div>
   );
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('ko-KR');
 }
 
 export function MyPage() {
@@ -85,7 +67,7 @@ export function MyPage() {
   const fetchPurchased = useCallback(async (page: number) => {
     setPurchasedLoading(true);
     try {
-      const res = await apiGet<PaginatedPurchased>(API_ENDPOINTS.ORDERS_ME_PRODUCTS(page, PURCHASED_TAKE));
+      const res = await apiGet<PaginatedResponse<PurchasedProduct>>(API_ENDPOINTS.ORDERS_ME_PRODUCTS(page, PURCHASED_TAKE));
       setPurchasedProducts(res.data);
       setPurchasedTotal(res.total);
     } catch {

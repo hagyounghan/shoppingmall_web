@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { CartItemUI, Product } from '@shared/types';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
