@@ -642,7 +642,6 @@ function StarRating({ value, onChange }: { value: number; onChange?: (v: number)
 
 function ProductReviews({
   productId,
-  isAuthenticated,
   currentUserId,
 }: {
   productId: string;
@@ -653,11 +652,6 @@ function ProductReviews({
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [rating, setRating] = useState(5);
-  const [content, setContent] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
   const navigate = useNavigate();
   const TAKE = 5;
 
@@ -676,25 +670,6 @@ function ProductReviews({
 
   useEffect(() => { fetchReviews(page); }, [fetchReviews, page]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (content.length < 10) { setSubmitError('리뷰 내용을 10자 이상 입력해주세요.'); return; }
-    setSubmitError('');
-    setSubmitting(true);
-    try {
-      await apiPost(API_ENDPOINTS.PRODUCT_REVIEWS(productId), { rating, content });
-      setContent('');
-      setRating(5);
-      setShowForm(false);
-      setPage(1);
-      fetchReviews(1);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : '리뷰 작성 중 오류가 발생했습니다.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleDelete = async (reviewId: string) => {
     if (!confirm('리뷰를 삭제하시겠습니까?')) return;
     try {
@@ -711,47 +686,13 @@ function ProductReviews({
     <div>
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl">상품 리뷰 <span className="text-muted-foreground text-base">({total})</span></h3>
-        {isAuthenticated ? (
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="px-4 py-2 bg-primary text-primary-foreground text-sm hover:bg-accent transition-colors"
-          >
-            {showForm ? '취소' : '리뷰 작성'}
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate('/login')}
-            className="flex items-center gap-1 px-4 py-2 border border-border text-sm hover:bg-secondary transition-colors"
-          >
-            <LogIn className="w-4 h-4" />
-            로그인 후 리뷰 작성
-          </button>
-        )}
+        <button
+          onClick={() => navigate('/my')}
+          className="flex items-center gap-1 px-4 py-2 border border-border text-sm hover:bg-secondary transition-colors"
+        >
+          마이페이지에서 리뷰 작성
+        </button>
       </div>
-
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-8 p-6 border border-border bg-secondary/30">
-          <p className="text-sm font-semibold mb-3">평점</p>
-          <StarRating value={rating} onChange={setRating} />
-          <p className="text-sm font-semibold mt-4 mb-2">리뷰 내용 <span className="text-muted-foreground font-normal">(최소 10자)</span></p>
-          <textarea
-            rows={4}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="상품을 구매하신 소감을 적어주세요."
-            className="w-full px-4 py-3 border border-border bg-white resize-none text-sm"
-            maxLength={1000}
-          />
-          <p className="text-xs text-muted-foreground text-right mt-1">{content.length}/1000</p>
-          {submitError && <p className="text-sm text-destructive mt-2">{submitError}</p>}
-          <div className="flex justify-end gap-2 mt-4">
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-border text-sm hover:bg-secondary transition-colors">취소</button>
-            <button type="submit" disabled={submitting} className="px-4 py-2 bg-primary text-primary-foreground text-sm hover:bg-accent transition-colors disabled:opacity-50">
-              {submitting ? '등록 중...' : '리뷰 등록'}
-            </button>
-          </div>
-        </form>
-      )}
 
       {loading ? (
         <p className="py-12 text-center text-muted-foreground">불러오는 중...</p>
