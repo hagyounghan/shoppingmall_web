@@ -36,7 +36,6 @@ interface Recommendation {
 interface ProductForm {
   name: string;
   price: string;
-  stock: string;
   brandId: string;
   categoryId: string;
   tag: string;
@@ -46,7 +45,7 @@ interface ProductForm {
 }
 
 const EMPTY_FORM: ProductForm = {
-  name: '', price: '', stock: '', brandId: '', categoryId: '',
+  name: '', price: '', brandId: '', categoryId: '',
   tag: '', discountRate: '', image: '', description: '',
 };
 
@@ -183,6 +182,14 @@ export default function AdminDashboard() {
   const [newSeriesName, setNewSeriesName] = useState('');
   const [newSeriesSaving, setNewSeriesSaving] = useState(false);
 
+  // 장비 목록 필터
+  const [productFilter, setProductFilter] = useState('');
+  // 같이구매 장비 추가 팝업 (신규 등록 폼)
+  const [companionPopup, setCompanionPopup] = useState<{ catTempId: string | null }>({ catTempId: null });
+  const [companionPopupSearch, setCompanionPopupSearch] = useState('');
+  const [companionPopupResults, setCompanionPopupResults] = useState<Product[]>([]);
+  const [companionPopupLoaded, setCompanionPopupLoaded] = useState(false);
+
   // 신규 등록 폼 - 모델 목록
   const [formModels, setFormModels] = useState<{ tempId: string; name: string; price: string }[]>([]);
   // 신규 등록 폼 - 연관 카테고리
@@ -193,9 +200,6 @@ export default function AdminDashboard() {
     items: { productId: string; productName: string; price: number }[];
   }[]>([]);
   const [formCompanionNewLabel, setFormCompanionNewLabel] = useState('');
-  const [formCompanionSearch, setFormCompanionSearch] = useState('');
-  const [formCompanionSearchResults, setFormCompanionSearchResults] = useState<Product[]>([]);
-  const [formCompanionActiveCatId, setFormCompanionActiveCatId] = useState<string | null>(null);
 
   // 메인/추천 관리 목업 (배너만 유지)
   const banners = [{ id: 1, title: "30년 경력 명장의 선택", subtitle: "최신 해양 장비 특별전", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200", isActive: true }];
@@ -420,7 +424,6 @@ export default function AdminDashboard() {
       const created = await apiPost<{ id: string }>(API_ENDPOINTS.PRODUCTS, {
         name: productForm.name,
         price: Number(productForm.price),
-        stock: Number(productForm.stock) || 0,
         brandId: productForm.brandId,
         categoryId: productForm.categoryId,
         tag: productForm.tag || undefined,
@@ -471,12 +474,30 @@ export default function AdminDashboard() {
     }
   };
 
-  const searchFormCompanionProducts = async (q: string) => {
-    if (!q.trim()) { setFormCompanionSearchResults([]); return; }
+  const openCompanionPopup = async (catTempId: string) => {
+    setCompanionPopup({ catTempId });
+    setCompanionPopupSearch('');
+    setCompanionPopupLoaded(false);
     try {
-      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(q)}&take=10`);
-      setFormCompanionSearchResults(res.data);
-    } catch { setFormCompanionSearchResults([]); }
+      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=50`);
+      setCompanionPopupResults(res.data);
+    } catch { setCompanionPopupResults([]); }
+    finally { setCompanionPopupLoaded(true); }
+  };
+
+  const searchCompanionPopup = async (q: string) => {
+    setCompanionPopupSearch(q);
+    if (!q.trim()) {
+      try {
+        const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?take=50`);
+        setCompanionPopupResults(res.data);
+      } catch { setCompanionPopupResults([]); }
+      return;
+    }
+    try {
+      const res = await apiGet<PaginatedProducts>(`${API_ENDPOINTS.PRODUCTS}?search=${encodeURIComponent(q)}&take=20`);
+      setCompanionPopupResults(res.data);
+    } catch { setCompanionPopupResults([]); }
   };
 
   // 상품 수정
@@ -486,7 +507,6 @@ export default function AdminDashboard() {
       await apiPatch(API_ENDPOINTS.PRODUCT_DETAIL(id), {
         name: editForm.name || undefined,
         price: editForm.price ? Number(editForm.price) : undefined,
-        stock: editForm.stock ? Number(editForm.stock) : undefined,
         brandId: editForm.brandId || undefined,
         categoryId: editForm.categoryId || undefined,
         tag: editForm.tag || undefined,
@@ -515,18 +535,20 @@ export default function AdminDashboard() {
   };
 
   const startEditing = (product: Product) => {
+    setIsAddingProduct(false);
     setEditingId(product.id);
     setEditForm({
       name: product.name,
       price: String(product.price),
-      stock: String(product.stock),
       brandId: product.brandId,
       categoryId: product.categoryId,
       tag: product.tag || '',
       discountRate: String(product.discountRate),
-      image: product.image,
-      description: product.description,
+      image: product.image || '',
+      description: product.description || '',
     });
+    // 시리즈·같이구매 패널도 함께 열기
+    openConfigPanel(product);
   };
 
   // 장비 연결 관리
@@ -1043,12 +1065,6 @@ export default function AdminDashboard() {
                       className="p-2 border rounded w-full" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-500 mb-1 block">재고수량</label>
-                    <input type="number" placeholder="재고수량" value={productForm.stock}
-                      onChange={(e) => setProductForm(f => ({ ...f, stock: e.target.value }))}
-                      className="p-2 border rounded w-full" />
-                  </div>
-                  <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block">브랜드 <span className="text-red-500">*</span></label>
                     <select value={productForm.brandId}
                       onChange={(e) => setProductForm(f => ({ ...f, brandId: e.target.value }))}
@@ -1218,50 +1234,12 @@ export default function AdminDashboard() {
                             ><X size={12}/></button>
                           </div>
                         ))}
-                        {/* 제품 검색 */}
-                        {formCompanionActiveCatId === cat.tempId ? (
-                          <div className="mt-2">
-                            <div className="flex gap-2">
-                              <input
-                                type="text"
-                                placeholder="장비 검색..."
-                                value={formCompanionSearch}
-                                onChange={(e) => { setFormCompanionSearch(e.target.value); searchFormCompanionProducts(e.target.value); }}
-                                className="flex-1 p-2 border rounded text-sm"
-                                autoFocus
-                              />
-                              <button type="button" onClick={() => { setFormCompanionActiveCatId(null); setFormCompanionSearch(''); setFormCompanionSearchResults([]); }} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>
-                            </div>
-                            {formCompanionSearchResults.length > 0 && (
-                              <div className="mt-1 border rounded bg-white shadow-sm max-h-40 overflow-y-auto">
-                                {formCompanionSearchResults.map(p => (
-                                  <button
-                                    key={p.id}
-                                    type="button"
-                                    onClick={() => {
-                                      if (!cat.items.find(i => i.productId === p.id)) {
-                                        setFormCompanions(prev => prev.map(x => x.tempId === cat.tempId ? { ...x, items: [...x.items, { productId: p.id, productName: p.name, price: p.price }] } : x));
-                                      }
-                                      setFormCompanionActiveCatId(null);
-                                      setFormCompanionSearch('');
-                                      setFormCompanionSearchResults([]);
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center justify-between"
-                                  >
-                                    <span>{p.name}</span>
-                                    <span className="text-slate-400 text-xs">{p.price.toLocaleString()}원</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setFormCompanionActiveCatId(cat.tempId)}
-                            className="mt-1 text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1"
-                          ><Plus size={12}/> 장비 추가</button>
-                        )}
+                        {/* 장비 추가 버튼 → 팝업 열기 */}
+                        <button
+                          type="button"
+                          onClick={() => openCompanionPopup(cat.tempId)}
+                          className="mt-2 text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1 border border-blue-200 px-2 py-1 rounded"
+                        ><Plus size={12}/> 장비 검색</button>
                       </div>
                     ))}
                   </div>
@@ -1491,6 +1469,95 @@ export default function AdminDashboard() {
               </div>
             )}
 
+            {/* 상품 목록 필터 */}
+            <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-xl border shadow-sm">
+              <Search size={16} className="text-slate-400"/>
+              <input
+                type="text"
+                placeholder="장비명으로 검색..."
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                className="flex-1 text-sm outline-none"
+              />
+              {productFilter && <button onClick={() => setProductFilter('')} className="text-slate-400 hover:text-slate-600"><X size={14}/></button>}
+            </div>
+
+            {/* 수정 패널 */}
+            {editingId && (
+              <div className="bg-white p-6 rounded-2xl border-2 border-blue-100 shadow-md">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-lg">장비 수정</h3>
+                  <button onClick={() => { setEditingId(null); setConfigProductId(null); }} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">장비명</label>
+                    <input type="text" value={editForm.name}
+                      onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+                      className="p-2 border rounded w-full"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">가격</label>
+                    <input type="number" value={editForm.price}
+                      onChange={(e) => setEditForm(f => ({ ...f, price: e.target.value }))}
+                      className="p-2 border rounded w-full"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">할인율 (%)</label>
+                    <input type="number" value={editForm.discountRate}
+                      onChange={(e) => setEditForm(f => ({ ...f, discountRate: e.target.value }))}
+                      className="p-2 border rounded w-full"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">브랜드</label>
+                    <select value={editForm.brandId}
+                      onChange={(e) => setEditForm(f => ({ ...f, brandId: e.target.value }))}
+                      className="p-2 border rounded w-full">
+                      <option value="">브랜드 선택</option>
+                      {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">카테고리</label>
+                    <select value={editForm.categoryId}
+                      onChange={(e) => setEditForm(f => ({ ...f, categoryId: e.target.value }))}
+                      className="p-2 border rounded w-full">
+                      <option value="">카테고리 선택</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">태그</label>
+                    <select value={editForm.tag}
+                      onChange={(e) => setEditForm(f => ({ ...f, tag: e.target.value }))}
+                      className="p-2 border rounded w-full">
+                      <option value="">태그 없음</option>
+                      <option value="BEST">BEST</option>
+                      <option value="NEW">NEW</option>
+                      <option value="SALE">SALE</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">이미지 URL</label>
+                    <input type="text" value={editForm.image}
+                      onChange={(e) => setEditForm(f => ({ ...f, image: e.target.value }))}
+                      className="p-2 border rounded w-full"/>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-slate-500 mb-1 block">상품 설명</label>
+                    <textarea value={editForm.description}
+                      onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))}
+                      className="p-2 border rounded w-full h-20 resize-none"/>
+                  </div>
+                </div>
+                <button onClick={() => handleEditProduct(editingId)}
+                  disabled={formLoading}
+                  className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold disabled:opacity-50 flex items-center justify-center gap-2">
+                  <Save size={16}/> {formLoading ? '저장 중...' : '수정 저장'}
+                </button>
+              </div>
+            )}
+
             {/* 상품 목록 테이블 */}
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
               {productsLoading ? (
@@ -1501,64 +1568,35 @@ export default function AdminDashboard() {
                     <tr>
                       <th className="p-4 text-slate-500">장비명</th>
                       <th className="p-4 text-slate-500">가격</th>
-                      <th className="p-4 text-slate-500">재고</th>
                       <th className="p-4 text-center text-slate-500">관리</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map(p => (
-                      editingId === p.id ? (
-                        <tr key={p.id} className="border-b bg-blue-50">
-                          <td className="p-3">
-                            <input type="text" value={editForm.name}
-                              onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
-                              className="p-1 border rounded w-full text-sm"/>
-                          </td>
-                          <td className="p-3">
-                            <input type="number" value={editForm.price}
-                              onChange={(e) => setEditForm(f => ({ ...f, price: e.target.value }))}
-                              className="p-1 border rounded w-full text-sm"/>
-                          </td>
-                          <td className="p-3">
-                            <input type="number" value={editForm.stock}
-                              onChange={(e) => setEditForm(f => ({ ...f, stock: e.target.value }))}
-                              className="p-1 border rounded w-20 text-sm"/>
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex justify-center gap-2">
-                              <button onClick={() => handleEditProduct(p.id)} disabled={formLoading}
-                                className="text-blue-600 hover:text-blue-800 disabled:opacity-50"><Save size={16}/></button>
-                              <button onClick={() => setEditingId(null)} className="text-slate-400 hover:text-slate-600"><X size={16}/></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        <tr key={p.id} className={`border-b hover:bg-slate-50 transition text-sm ${recProductId === p.id ? 'bg-indigo-50' : ''} ${configProductId === p.id ? 'bg-green-50' : ''}`}>
-                          <td className="p-4 font-bold">{p.name}</td>
-                          <td className="p-4 font-black text-blue-600">{p.price.toLocaleString()}원</td>
-                          <td className="p-4">{p.stock}개</td>
-                          <td className="p-4 text-center">
-                            <div className="flex justify-center gap-2">
-                              <button onClick={() => openRecommendations(p.id)}
-                                title="연결 장비 관리"
-                                className={`text-slate-400 hover:text-indigo-600 ${recProductId === p.id ? 'text-indigo-600' : ''}`}>
-                                <Link2 size={16}/>
-                              </button>
-                              <button
-                                onClick={() => configProductId === p.id ? setConfigProductId(null) : openConfigPanel(p)}
-                                title="시리즈/같이구매 설정"
-                                className={`text-slate-400 hover:text-green-600 ${configProductId === p.id ? 'text-green-600' : ''}`}>
-                                <Sparkles size={16}/>
-                              </button>
-                              <button onClick={() => startEditing(p)} className="text-slate-400 hover:text-blue-600"><Edit size={16}/></button>
-                              <button onClick={() => handleDeleteProduct(p.id, p.name)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
+                    {products.filter(p => !productFilter || p.name.toLowerCase().includes(productFilter.toLowerCase())).map(p => (
+                      <tr key={p.id} className={`border-b hover:bg-slate-50 transition text-sm ${recProductId === p.id ? 'bg-indigo-50' : ''} ${editingId === p.id ? 'bg-blue-50' : ''}`}>
+                        <td className="p-4 font-bold">{p.name}</td>
+                        <td className="p-4 font-black text-blue-600">{p.price.toLocaleString()}원</td>
+                        <td className="p-4 text-center">
+                          <div className="flex justify-center gap-2">
+                            <button onClick={() => openRecommendations(p.id)}
+                              title="연결 장비 관리"
+                              className={`text-slate-400 hover:text-indigo-600 ${recProductId === p.id ? 'text-indigo-600' : ''}`}>
+                              <Link2 size={16}/>
+                            </button>
+                            <button onClick={() => editingId === p.id ? (setEditingId(null), setConfigProductId(null)) : startEditing(p)}
+                              title="수정"
+                              className={`text-slate-400 hover:text-blue-600 ${editingId === p.id ? 'text-blue-600' : ''}`}>
+                              <Edit size={16}/>
+                            </button>
+                            <button onClick={() => handleDeleteProduct(p.id, p.name)} title="삭제" className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                          </div>
+                        </td>
+                      </tr>
                     ))}
-                    {products.length === 0 && !productsLoading && (
-                      <tr><td colSpan={4} className="p-8 text-center text-slate-400">등록된 상품이 없습니다.</td></tr>
+                    {products.filter(p => !productFilter || p.name.toLowerCase().includes(productFilter.toLowerCase())).length === 0 && !productsLoading && (
+                      <tr><td colSpan={3} className="p-8 text-center text-slate-400">
+                        {productFilter ? `"${productFilter}"에 해당하는 장비가 없습니다.` : '등록된 상품이 없습니다.'}
+                      </td></tr>
                     )}
                   </tbody>
                 </table>
@@ -2419,6 +2457,65 @@ export default function AdminDashboard() {
 
 
       </main>
+
+      {/* 같이구매 장비 검색 팝업 */}
+      {companionPopup.catTempId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setCompanionPopup({ catTempId: null })}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">장비 검색</h3>
+              <button onClick={() => setCompanionPopup({ catTempId: null })} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+            </div>
+            <div className="flex items-center gap-2 border rounded-lg px-3 py-2 mb-4">
+              <Search size={15} className="text-slate-400"/>
+              <input
+                type="text"
+                placeholder="장비명 검색..."
+                value={companionPopupSearch}
+                onChange={(e) => searchCompanionPopup(e.target.value)}
+                className="flex-1 text-sm outline-none"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-80 overflow-y-auto divide-y">
+              {!companionPopupLoaded ? (
+                <div className="p-4 text-center text-slate-400 text-sm flex items-center justify-center gap-2"><Loader2 size={14} className="animate-spin"/> 불러오는 중...</div>
+              ) : companionPopupResults.length === 0 ? (
+                <div className="p-4 text-center text-slate-400 text-sm">검색 결과가 없습니다.</div>
+              ) : (
+                companionPopupResults.map(p => {
+                  const catTempId = companionPopup.catTempId!;
+                  const cat = formCompanions.find(c => c.tempId === catTempId);
+                  const alreadyAdded = cat?.items.some(i => i.productId === p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        if (!alreadyAdded) {
+                          setFormCompanions(prev => prev.map(x => x.tempId === catTempId
+                            ? { ...x, items: [...x.items, { productId: p.id, productName: p.name, price: p.price }] }
+                            : x
+                          ));
+                        }
+                        setCompanionPopup({ catTempId: null });
+                      }}
+                      disabled={alreadyAdded}
+                      className="w-full flex items-center gap-3 px-3 py-3 hover:bg-slate-50 text-left disabled:opacity-40"
+                    >
+                      {p.image && <img src={p.image} alt="" className="w-10 h-10 object-cover rounded border"/>}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{p.name}</p>
+                        <p className="text-xs text-blue-600">{p.price.toLocaleString()}원</p>
+                      </div>
+                      {alreadyAdded && <span className="text-xs text-slate-400">추가됨</span>}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

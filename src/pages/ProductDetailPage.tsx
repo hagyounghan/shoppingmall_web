@@ -114,8 +114,15 @@ export function ProductDetailPage() {
 
   const useCompanionGroups = (product.companionGroups ?? []).length > 0;
 
+  // 선택된 옵션의 가격 (없으면 기본 상품 가격)
+  const getBasePrice = () => {
+    if (!selectedOption) return product.price;
+    const opt = product.options?.find((o) => o.name === selectedOption);
+    return opt?.price ?? product.price;
+  };
+
   const getTotalPrice = () =>
-    product.price * quantity +
+    getBasePrice() * quantity +
     (useCompanionGroups ? getCompanionExtraPrice() : getRelatedExtraPrice());
 
   const handleAddToCart = async () => {
@@ -296,7 +303,11 @@ export function ProductDetailPage() {
                 <p className="text-sm text-muted-foreground mb-1">{product.series.name}</p>
               )}
               <h1 className="text-2xl mb-4">{product.name}</h1>
-              <p className="text-3xl text-primary">{product.price.toLocaleString()}원~</p>
+              <p className="text-3xl text-primary">
+                {selectedOption
+                  ? getBasePrice().toLocaleString()
+                  : product.price.toLocaleString()}원{!selectedOption && product.options?.length > 0 ? '~' : ''}
+              </p>
             </div>
 
             <div className="border-t border-b border-border py-6 space-y-6">
@@ -313,7 +324,7 @@ export function ProductDetailPage() {
                     {product.options.map((option) => (
                       <option key={option.id} value={option.name}>
                         {option.name}
-                        {option.price !== 0 && ` (+${formatPrice(option.price)})`}
+                        {option.price > 0 && ` — ${formatPrice(option.price)}`}
                       </option>
                     ))}
                   </select>
@@ -376,8 +387,8 @@ export function ProductDetailPage() {
               {/* 합계 */}
               <div className="pt-4 border-t border-border space-y-2">
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>본체</span>
-                  <span>{formatPrice(product.price)} × {quantity}</span>
+                  <span>본체{selectedOption ? ` (${selectedOption})` : ''}</span>
+                  <span>{formatPrice(getBasePrice())} × {quantity}</span>
                 </div>
                 {useCompanionGroups
                   ? Object.entries(selectedCompanions).map(([groupId, productId]) => {
