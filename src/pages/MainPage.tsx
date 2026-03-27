@@ -207,7 +207,7 @@ export function MainPage() {
                           <img
                             src={set.type === 'fishing_vessel' ? '/fishing.png' : '/leisure.png'}
                             alt="선박"
-                            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                            className="absolute inset-0 w-full h-full object-fill pointer-events-none"
                           />
                           {EQUIPMENT_POSITIONS.map(pos => {
                             const item = itemBySlug[pos.id];

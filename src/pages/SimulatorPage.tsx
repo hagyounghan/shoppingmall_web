@@ -505,7 +505,7 @@ export function SimulatorPage() {
                 <img
                   src={boatType === 'fishing' ? '/fishing.png' : '/leisure.png'}
                   alt="선박 이미지"
-                  className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                  className="absolute inset-0 w-full h-full object-fill pointer-events-none"
                 />
                 <div className="absolute inset-0 pointer-events-none" />
                 {EQUIPMENT_POSITIONS.map((position) => {
