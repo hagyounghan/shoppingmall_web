@@ -9,10 +9,20 @@ import { apiGet } from "@/lib/api-client";
 import { API_ENDPOINTS } from "@/config/api";
 import { SimulatorSet, SimulatorType } from "@shared/types";
 
-const PRESET_LABEL: Record<string, { name: string; icon: typeof Crown; color: string; border: string; badge: string; text: string }> = {
-  premium: { name: '프리미엄 세트', icon: Crown,      color: 'from-amber-50 to-amber-100', border: 'border-amber-300', badge: 'bg-amber-500', text: 'text-amber-900' },
-  value:   { name: '가성비 세트',   icon: TrendingUp, color: 'from-blue-50 to-blue-100',   border: 'border-blue-300',  badge: 'bg-blue-500',  text: 'text-blue-900'  },
-  budget:  { name: '가심비 세트',   icon: Wallet,     color: 'from-green-50 to-green-100', border: 'border-green-300', badge: 'bg-green-500', text: 'text-green-900' },
+// SimulatorPage의 EQUIPMENT_POSITIONS와 동일
+const EQUIPMENT_POSITIONS = [
+  { id: 'gps-plotter',    name: 'GPS플로터',  x: 45, y: 25 },
+  { id: 'radar',          name: '레이더',      x: 50, y: 15 },
+  { id: 'vhf-radio',      name: 'VHF 무선기', x: 20, y: 30 },
+  { id: 'trolling-motor', name: '트롤링모터',  x: 15, y: 70 },
+  { id: 'transducer',     name: '송수파기',    x: 75, y: 50 },
+  { id: 'autopilot',      name: '자동조타',    x: 60, y: 60 },
+] as const;
+
+const PRESET_LABEL: Record<string, { name: string; icon: typeof Crown; badge: string }> = {
+  premium: { name: '프리미엄 세트', icon: Crown,      badge: 'bg-amber-500' },
+  value:   { name: '가성비 세트',   icon: TrendingUp, badge: 'bg-blue-500'  },
+  budget:  { name: '가심비 세트',   icon: Wallet,     badge: 'bg-green-500' },
 };
 
 const TYPE_LABEL: Record<SimulatorType, { name: string; icon: typeof Ship }> = {
@@ -160,8 +170,9 @@ export function MainPage() {
                   const typeMeta = TYPE_LABEL[set.type];
                   const Icon = meta.icon;
                   const TypeIcon = typeMeta.icon;
-                  const totalPrice = set.items.reduce((sum, item) => sum, 0);
                   const isVisible = index === currentIndex;
+                  // categorySlug → 세트 아이템 매핑
+                  const itemBySlug = Object.fromEntries(set.items.map(item => [item.categorySlug, item]));
 
                   return (
                     <div
@@ -170,43 +181,55 @@ export function MainPage() {
                     >
                       <div
                         onClick={() => handleSetClick(set)}
-                        className={`group relative bg-gradient-to-br ${meta.color} border-2 ${meta.border} rounded-xl overflow-hidden hover:shadow-xl cursor-pointer transition-shadow`}
+                        className="group relative bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl cursor-pointer transition-shadow border border-border"
                       >
-                        <div className="p-8 md:flex md:gap-10 items-start">
-                          {/* 왼쪽: 배지 + 제목 + 설명 */}
-                          <div className="md:w-1/3 mb-6 md:mb-0">
-                            <div className="flex items-center gap-2 mb-4">
-                              <span className={`flex items-center gap-1.5 ${meta.badge} text-white px-3 py-1 rounded-full text-xs font-semibold`}>
-                                <Icon className="w-3.5 h-3.5" />
-                                {meta.name}
-                              </span>
-                              <span className="flex items-center gap-1 bg-white/70 text-gray-700 px-2.5 py-1 rounded-full text-xs font-medium">
-                                <TypeIcon className="w-3 h-3" />
-                                {typeMeta.name}
-                              </span>
-                            </div>
-                            <h3 className={`text-2xl font-bold ${meta.text} mb-2`}>{set.name}</h3>
-                            {set.description && (
-                              <p className="text-sm text-muted-foreground leading-relaxed">{set.description}</p>
-                            )}
-                            <button className={`mt-6 px-5 py-2.5 ${meta.badge} text-white rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold text-sm`}>
-                              시뮬레이터에서 보기
-                              <ArrowRight className="w-4 h-4" />
-                            </button>
-                          </div>
+                        {/* 타이틀 바 */}
+                        <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+                          <span className={`flex items-center gap-1.5 ${meta.badge} text-white px-3 py-1 rounded-full text-xs font-semibold`}>
+                            <Icon className="w-3.5 h-3.5" />
+                            {meta.name}
+                          </span>
+                          <span className="flex items-center gap-1 bg-secondary text-muted-foreground px-2.5 py-1 rounded-full text-xs font-medium">
+                            <TypeIcon className="w-3 h-3" />
+                            {typeMeta.name}
+                          </span>
+                          <h3 className="text-lg font-bold ml-1">{set.name}</h3>
+                          <span className="ml-auto flex items-center gap-1.5 text-primary text-sm font-semibold group-hover:gap-2.5 transition-all">
+                            시뮬레이터에서 보기 <ArrowRight className="w-4 h-4" />
+                          </span>
+                        </div>
 
-                          {/* 오른쪽: 장비 목록 */}
-                          <div className="md:flex-1 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {set.items.map(item => (
+                        {/* 배 + 장비 배치도 */}
+                        <div
+                          className="relative w-full bg-white flex items-center justify-center"
+                          style={{ height: '420px' }}
+                        >
+                          <img
+                            src={set.type === 'fishing_vessel' ? '/fishing.png' : '/leisure.png'}
+                            alt="선박"
+                            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                          />
+                          {EQUIPMENT_POSITIONS.map(pos => {
+                            const item = itemBySlug[pos.id];
+                            return (
                               <div
-                                key={item.id}
-                                className="bg-white/70 rounded-lg px-4 py-3 flex items-center gap-2"
+                                key={pos.id}
+                                className="absolute z-10 pointer-events-none"
+                                style={{ left: `${pos.x}%`, top: `${pos.y}%`, transform: 'translate(-50%, -50%)' }}
                               >
-                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${meta.badge}`} />
-                                <span className="text-sm text-gray-700 truncate">{item.productName ?? item.categoryName ?? '—'}</span>
+                                {item ? (
+                                  <div className="relative">
+                                    <div className={`w-10 h-10 rounded-full border-4 border-white shadow-2xl ${meta.badge} flex items-center justify-center`} />
+                                    <div className="absolute top-12 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-800/90 text-white px-2 py-1 rounded text-[11px] shadow-md font-semibold">
+                                      {pos.name}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full border-2 bg-white/60 border-gray-300" />
+                                )}
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
