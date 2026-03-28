@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@features/auth';
 import { useCart } from '@features/cart';
 import { apiPost } from '@/lib/api-client';
@@ -28,10 +28,28 @@ declare global {
 
 const PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'BANK_TRANSFER'];
 
+interface DirectOrderItem {
+  id: string;
+  productId: string;
+  optionId?: string;
+  quantity: number;
+  name: string;
+  price: number;
+  image: string;
+}
+
 export function OrderPage() {
   const { user, isAuthenticated } = useAuth();
-  const { items, clearCart, getTotalPrice } = useCart();
+  const { items: cartItems, clearCart, getTotalPrice: getCartTotal } = useCart();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  // 즉시 구매 items (ProductDetailPage "구매하기" 클릭 시 router state로 전달)
+  const directItems: DirectOrderItem[] | undefined = (location.state as { directItems?: DirectOrderItem[] })?.directItems;
+  const items = directItems ?? cartItems;
+  const getTotalPrice = directItems
+    ? () => directItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    : getCartTotal;
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD');
   const [note, setNote] = useState('');
@@ -159,7 +177,7 @@ export function OrderPage() {
         await apiPost<OrderResponse>(API_ENDPOINTS.ORDERS_GUEST, body);
       }
 
-      await clearCart();
+      if (!directItems) await clearCart();
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : '주문 처리 중 오류가 발생했습니다.');

@@ -70,9 +70,10 @@ export const API_ENDPOINTS = {
   NOTICES: '/notices',
   NOTICE_DETAIL: (id: string) => `/notices/${id}`,
 
-  // Inquiries (전체 상품 문의)
+  // Inquiries (전체 상품 문의 + 일반 문의)
   INQUIRIES: '/inquiries',
   INQUIRIES_ME: '/inquiries/me',
+  INQUIRY_ITEM: (id: string) => `/inquiries/${id}`,
 
   // Lectures (강의실)
   LECTURES: '/lectures',

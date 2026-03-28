@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Search, ChevronDown, ChevronUp, BadgeCheck } from 'lucide-react';
-import { apiGet } from '@/lib/api-client';
+import { MessageSquare, Search, ChevronDown, ChevronUp, BadgeCheck, PenLine, Trash2, X } from 'lucide-react';
+import { apiGet, apiPost, apiDelete } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
 import { InquiryItem, PaginatedResponse } from '@shared/types';
 import { useAuth } from '@features/auth';
 
-type Tab = 'all' | 'mine';
+type Tab = 'all' | 'mine' | 'write';
 
 export function ResourceQnAPage() {
   const { isAuthenticated, user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('all');
+
+  // ─── 문의 작성 상태 ────────────────────────────────────────────────────────
+  const [writeTitle, setWriteTitle] = useState('');
+  const [writeContent, setWriteContent] = useState('');
+  const [writeLoading, setWriteLoading] = useState(false);
+  const [writeError, setWriteError] = useState('');
 
   // ─── 전체 문의 상태 ────────────────────────────────────────────────────────
   const [inputKeyword, setInputKeyword] = useState('');
@@ -62,6 +68,36 @@ export function ResourceQnAPage() {
     setInquiryPage(1);
   };
 
+  const handleWriteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!writeTitle.trim() || !writeContent.trim()) {
+      setWriteError('제목과 내용을 입력해주세요.');
+      return;
+    }
+    setWriteLoading(true);
+    setWriteError('');
+    try {
+      await apiPost(API_ENDPOINTS.INQUIRIES, { title: writeTitle.trim(), content: writeContent.trim() });
+      setWriteTitle('');
+      setWriteContent('');
+      setActiveTab('mine');
+    } catch {
+      setWriteError('문의 작성에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setWriteLoading(false);
+    }
+  };
+
+  const handleDeleteMine = async (id: string) => {
+    if (!confirm('문의를 삭제하시겠습니까?')) return;
+    try {
+      await apiDelete(API_ENDPOINTS.INQUIRY_ITEM(id));
+      setMyInquiries(prev => prev.filter(i => i.id !== id));
+    } catch {
+      alert('삭제에 실패했습니다.');
+    }
+  };
+
   const toggleSet = (set: Set<string>, id: string, setter: React.Dispatch<React.SetStateAction<Set<string>>>) => {
     const next = new Set(set);
     if (next.has(id)) next.delete(id);
@@ -86,13 +122,26 @@ export function ResourceQnAPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-border mb-8 bg-white rounded-t-lg">
+          <div className="flex items-center border-b border-border mb-8 bg-white rounded-t-lg">
             <button className={tabClass('all')} onClick={() => setActiveTab('all')}>
               전체 문의
             </button>
             {isAuthenticated && (
               <button className={tabClass('mine')} onClick={() => setActiveTab('mine')}>
                 내 문의
+              </button>
+            )}
+            {isAuthenticated && (
+              <button
+                className={`ml-auto mr-3 my-1 flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  activeTab === 'write'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-primary/10 text-primary hover:bg-primary/20'
+                }`}
+                onClick={() => setActiveTab(activeTab === 'write' ? 'all' : 'write')}
+              >
+                {activeTab === 'write' ? <X className="w-4 h-4" /> : <PenLine className="w-4 h-4" />}
+                {activeTab === 'write' ? '취소' : '문의 작성'}
               </button>
             )}
           </div>
@@ -220,6 +269,57 @@ export function ResourceQnAPage() {
             </div>
           )}
 
+          {/* ─── 문의 작성 탭 ─────────────────────────────────────────────── */}
+          {activeTab === 'write' && (
+            <div className="bg-white border border-border rounded-lg p-6">
+              <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
+                <PenLine className="w-5 h-5 text-primary" /> 문의 작성
+              </h2>
+              <form onSubmit={handleWriteSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1">제목 <span className="text-destructive">*</span></label>
+                  <input
+                    type="text"
+                    value={writeTitle}
+                    onChange={e => setWriteTitle(e.target.value)}
+                    placeholder="문의 제목을 입력해주세요"
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={writeLoading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1">내용 <span className="text-destructive">*</span></label>
+                  <textarea
+                    value={writeContent}
+                    onChange={e => setWriteContent(e.target.value)}
+                    placeholder="문의 내용을 입력해주세요"
+                    rows={6}
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    disabled={writeLoading}
+                  />
+                </div>
+                {writeError && <p className="text-sm text-destructive">{writeError}</p>}
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('all')}
+                    className="px-5 py-2.5 border border-border rounded-lg hover:bg-secondary transition-colors text-sm font-semibold"
+                    disabled={writeLoading}
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={writeLoading}
+                    className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-accent transition-colors text-sm font-semibold disabled:opacity-60"
+                  >
+                    {writeLoading ? '제출 중...' : '문의 제출'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
           {/* ─── 내 문의 탭 ───────────────────────────────────────────────── */}
           {activeTab === 'mine' && (
             <div>
@@ -230,7 +330,15 @@ export function ResourceQnAPage() {
               ) : myLoading ? (
                 <div className="text-center py-12 text-muted-foreground">불러오는 중...</div>
               ) : myInquiries.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">내가 작성한 문의가 없습니다.</div>
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="mb-4">작성한 문의가 없습니다.</p>
+                  <button
+                    onClick={() => setActiveTab('write')}
+                    className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-accent transition-colors text-sm font-semibold"
+                  >
+                    문의 작성하기
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {myInquiries.map((item) => (
@@ -251,13 +359,26 @@ export function ResourceQnAPage() {
                                 답변대기
                               </span>
                             )}
+                            {!item.productId && (
+                              <span className="px-2 py-0.5 bg-secondary text-muted-foreground text-xs rounded">일반 문의</span>
+                            )}
                           </div>
                           <h3 className="font-semibold truncate">{item.title}</h3>
                           <p className="text-sm text-muted-foreground mt-1">
                             {new Date(item.createdAt).toLocaleDateString('ko-KR')}
                           </p>
                         </div>
-                        <div className="flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {!item.isAnswered && !item.productId && (
+                            <span
+                              role="button"
+                              onClick={e => { e.stopPropagation(); handleDeleteMine(item.id); }}
+                              className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </span>
+                          )}
                           {expandedMine.has(item.id)
                             ? <ChevronUp className="w-5 h-5 text-muted-foreground" />
                             : <ChevronDown className="w-5 h-5 text-muted-foreground" />}

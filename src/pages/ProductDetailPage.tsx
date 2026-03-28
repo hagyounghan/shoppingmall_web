@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ROUTES } from '@shared/constants/routes';
 import { Minus, Plus, ShoppingCart, Heart, MessageCircle, HelpCircle, ChevronLeft, ChevronRight, Star, LogIn, ChevronDown, ChevronUp } from 'lucide-react';
 import { ImageWithFallback } from '@shared/components/figma/ImageWithFallback';
 import { useCart } from '@features/cart';
@@ -209,6 +210,33 @@ export function ProductDetailPage() {
     setCartToast(true);
     if (cartToastTimer.current) clearTimeout(cartToastTimer.current);
     cartToastTimer.current = setTimeout(() => setCartToast(false), 2500);
+  };
+
+  const handleBuyNow = () => {
+    if (useCompanionGroups || product.options?.length) {
+      if (orderItems.length === 0) { alert('상품을 선택해주세요.'); return; }
+      const directItems = orderItems.map(item => ({
+        id: `direct-${item.productId}-${item.key}`,
+        productId: item.productId,
+        optionId: item.optionId,
+        quantity: item.quantity,
+        name: item.name,
+        price: item.price,
+        image: images[0] ?? '',
+      }));
+      navigate(ROUTES.ORDER, { state: { directItems } });
+    } else {
+      const baseItem = orderItems.find((i) => i.key === 'base');
+      navigate(ROUTES.ORDER, { state: { directItems: [{
+        id: `direct-${product.id}`,
+        productId: product.id,
+        optionId: undefined,
+        quantity: baseItem?.quantity ?? 1,
+        name: product.name,
+        price: product.price,
+        image: images[0] ?? '',
+      }]}});
+    }
   };
 
   const inWishlist = isInWishlist(product.id);
@@ -516,10 +544,9 @@ export function ProductDetailPage() {
 
             <div className="space-y-3">
               <button
-                onClick={handleAddToCart}
+                onClick={handleBuyNow}
                 className="w-full py-4 bg-primary text-primary-foreground hover:bg-accent transition-colors flex items-center justify-center gap-2"
               >
-                <ShoppingCart className="w-5 h-5" />
                 구매하기
               </button>
               <div className="grid grid-cols-2 gap-3">
