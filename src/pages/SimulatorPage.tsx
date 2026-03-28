@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { formatPrice } from '@shared/utils/format';
 import { Product, EquipmentPosition, SelectedEquipment, SimulatorSet, SimulatorType, PaginatedSimulatorSets, Category, PaginatedProducts } from '@shared/types';
 import { Button } from '@shared/components/ui/button';
@@ -12,6 +12,8 @@ import { BRANDS } from '@shared/constants/brands';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
 import { useAuth } from '@features/auth';
+import { useCart } from '@features/cart';
+import { ROUTES } from '@shared/constants/routes';
 
 // 장비 위치 정의 — id가 서버 category slug와 1:1 대응
 const FISHING_POSITIONS: EquipmentPosition[] = [
@@ -51,7 +53,9 @@ function toApiType(boatType: 'fishing' | 'leisure'): SimulatorType {
 
 export function SimulatorPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  const { addItem } = useCart();
   // 메인+서브 카테고리 모두 포함한 slug 맵 (transducer 등 서브 카테고리 포함)
   const [slugMap, setSlugMap] = useState<Record<string, Category>>({});
   const [boatType, setBoatType] = useState<'fishing' | 'leisure'>('leisure');
@@ -397,6 +401,12 @@ export function SimulatorPage() {
     setSelectedEquipment(empty);
   };
 
+  const handleBuyNow = async () => {
+    if (selectedProducts.length === 0) return;
+    await Promise.all(selectedProducts.map(product => addItem(product, 1)));
+    navigate(ROUTES.CART);
+  };
+
   const handleDeleteSet = async (setId: string, type: SimulatorType) => {
     if (!confirm('저장된 세트를 삭제하시겠습니까?')) return;
     try {
@@ -630,8 +640,8 @@ export function SimulatorPage() {
                   <X className="w-4 h-4 mr-2" /> 수정 취소
                 </Button>
               )}
-              <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" disabled={selectedProducts.length === 0}>
-                견적 문의하기
+              <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90" size="lg" disabled={selectedProducts.length === 0} onClick={handleBuyNow}>
+                구매하기
               </Button>
             </div>
           </div>

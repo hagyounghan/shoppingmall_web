@@ -9,14 +9,23 @@ import { apiGet } from "@/lib/api-client";
 import { API_ENDPOINTS } from "@/config/api";
 import { SimulatorSet, SimulatorType } from "@shared/types";
 
-// SimulatorPage의 EQUIPMENT_POSITIONS와 동일
-const EQUIPMENT_POSITIONS = [
+// SimulatorPage의 FISHING/LEISURE_POSITIONS와 동일 (타입별로 구분)
+const FISHING_POSITIONS = [
   { id: 'radar',          name: '레이더',      x: 48, y: 18 },
-  { id: 'gps-plotter',    name: 'GPS플로터',  x: 47, y: 32 },
-  { id: 'vhf-radio',      name: 'VHF 무선기', x: 40, y: 38 },
-  { id: 'autopilot',      name: '자동조타',    x: 54, y: 40 },
-  { id: 'transducer',     name: '송수파기',    x: 70, y: 48 },
-  { id: 'trolling-motor', name: '트롤링모터',  x: 18, y: 60 },
+  { id: 'gps-plotter',    name: 'GPS플로터',   x: 53, y: 32 },
+  { id: 'vhf-radio',      name: 'VHF 무선기',  x: 40, y: 38 },
+  { id: 'autopilot',      name: '자동조타',     x: 58, y: 40 },
+  { id: 'transducer',     name: '송수파기',     x: 70, y: 60 },
+  { id: 'trolling-motor', name: '트롤링모터',   x: 18, y: 60 },
+] as const;
+
+const LEISURE_POSITIONS = [
+  { id: 'radar',          name: '레이더',      x: 70, y: 18 },
+  { id: 'gps-plotter',    name: 'GPS플로터',   x: 60, y: 32 },
+  { id: 'vhf-radio',      name: 'VHF 무선기',  x: 40, y: 38 },
+  { id: 'autopilot',      name: '자동조타',     x: 54, y: 40 },
+  { id: 'transducer',     name: '송수파기',     x: 70, y: 60 },
+  { id: 'trolling-motor', name: '트롤링모터',   x: 18, y: 60 },
 ] as const;
 
 const PRESET_LABEL: Record<string, { name: string; icon: typeof Crown; badge: string }> = {
@@ -170,6 +179,7 @@ export function MainPage() {
                   const isVisible = index === currentIndex;
                   // categorySlug → 세트 아이템 매핑
                   const itemBySlug = Object.fromEntries(set.items.map(item => [item.categorySlug, item]));
+                  const positions = set.type === 'fishing_vessel' ? FISHING_POSITIONS : LEISURE_POSITIONS;
 
                   return (
                     <div
@@ -203,7 +213,7 @@ export function MainPage() {
                             alt="선박"
                             className="absolute inset-0 w-full h-full object-fill pointer-events-none"
                           />
-                          {EQUIPMENT_POSITIONS.map(pos => {
+                          {positions.map(pos => {
                             const item = itemBySlug[pos.id];
                             return (
                               <div
