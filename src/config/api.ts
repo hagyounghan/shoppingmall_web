@@ -115,8 +115,8 @@ export const API_ENDPOINTS = {
   // Consulting Status (관리자)
   CONSULTING_STATUS: (id: string) => `/consulting/${id}/status`,
 
-  // Inquiries (관리자 답변)
-  INQUIRY_ANSWER: (productId: string, inquiryId: string) => `/products/${productId}/inquiries/${inquiryId}/answer`,
+  // Inquiries (관리자 답변 — 문의 ID만으로)
+  INQUIRY_ANSWER: (inquiryId: string) => `/inquiries/${inquiryId}/answer`,
 
   // Product Reviews (상품 리뷰)
   PRODUCT_REVIEWS: (productId: string) => `/products/${productId}/reviews`,
