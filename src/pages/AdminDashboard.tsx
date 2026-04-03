@@ -2020,7 +2020,9 @@ export default function AdminDashboard() {
                           )}
                         </td>
                         <td className="p-4 text-slate-400 text-xs">{formatDate(iq.createdAt)}</td>
-                        <td className="p-4 text-slate-400 font-mono text-xs">{iq.productId.slice(0, 8)}...</td>
+                        <td className="p-4 text-slate-400 font-mono text-xs">
+                          {iq.productId ? `${iq.productId.slice(0, 8)}...` : <span className="text-slate-300">일반 문의</span>}
+                        </td>
                       </tr>
                     ))}
                     {inquiries.length === 0 && !inquiriesLoading && (

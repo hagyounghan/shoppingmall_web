@@ -391,7 +391,7 @@ export interface InquiryAnswer {
 
 export interface InquiryItem {
   id: string;
-  productId: string;
+  productId: string | null;
   userId: string;
   userName: string;
   title: string;
