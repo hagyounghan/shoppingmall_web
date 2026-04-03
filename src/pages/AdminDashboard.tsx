@@ -831,12 +831,17 @@ export default function AdminDashboard() {
 
   const handleSaveAnswer = async () => {
     if (!inquiryDetail) return;
+    const productId = inquiryDetail.product?.id ?? inquiryDetail.productId;
+    if (!productId) {
+      alert('상품 ID를 확인할 수 없어 답변을 저장할 수 없습니다.');
+      return;
+    }
     setAnswerLoading(true);
     try {
       if (inquiryDetail.isAnswered) {
-        await apiPatch(API_ENDPOINTS.INQUIRY_ANSWER(inquiryDetail.productId, inquiryDetail.id), { content: answerContent });
+        await apiPatch(API_ENDPOINTS.INQUIRY_ANSWER(productId, inquiryDetail.id), { content: answerContent });
       } else {
-        await apiPost(API_ENDPOINTS.INQUIRY_ANSWER(inquiryDetail.productId, inquiryDetail.id), { content: answerContent });
+        await apiPost(API_ENDPOINTS.INQUIRY_ANSWER(productId, inquiryDetail.id), { content: answerContent });
       }
       setInquiryDetail(null);
       await loadInquiries();

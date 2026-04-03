@@ -116,10 +116,7 @@ export const API_ENDPOINTS = {
   CONSULTING_STATUS: (id: string) => `/consulting/${id}/status`,
 
   // Inquiries (관리자 답변)
-  INQUIRY_ANSWER: (productId: string | null, inquiryId: string) =>
-    productId
-      ? `/products/${productId}/inquiries/${inquiryId}/answer`
-      : `/inquiries/${inquiryId}/answer`,
+  INQUIRY_ANSWER: (productId: string, inquiryId: string) => `/products/${productId}/inquiries/${inquiryId}/answer`,
 
   // Product Reviews (상품 리뷰)
   PRODUCT_REVIEWS: (productId: string) => `/products/${productId}/reviews`,

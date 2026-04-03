@@ -392,6 +392,7 @@ export interface InquiryAnswer {
 export interface InquiryItem {
   id: string;
   productId: string | null;
+  product?: { id: string; name?: string };
   userId: string;
   userName: string;
   title: string;
